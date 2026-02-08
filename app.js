@@ -203,6 +203,8 @@ const SIM = {
   lastBadge: "",
   isPlaying: false,
   timer: null,
+  reserveTrail: [],
+  viewWindow: null,
 };
 
 const DOM = {};
@@ -291,10 +293,12 @@ function resetSimulation() {
   SIM.history = [];
   SIM.strategyMemory = {};
   SIM.edge = { total: 0, retail: 0, arb: 0 };
+  SIM.viewWindow = null;
 
   const initResult = strategy.initialize(SIM.strategyMemory);
   SIM.strategyAmm = createAmm(strategy.name, 100, 10000, initResult.bidBps, initResult.askBps, true);
   SIM.normalizerAmm = createAmm("Normalizer 30 bps", 100, 10000, 30, 30, false);
+  SIM.reserveTrail = [{ x: SIM.strategyAmm.reserveX, y: SIM.strategyAmm.reserveY }];
 
   SIM.lastBadge = initResult.stateBadge || formatFeeBadge(SIM.strategyAmm);
   SIM.currentSnapshot = snapshotState();
@@ -345,6 +349,7 @@ function advanceOneTrade() {
   SIM.tradeCount += 1;
   SIM.lastEvent = event;
   SIM.currentSnapshot = event.snapshot;
+  trackStrategyPoint(event.snapshot);
 
   if (event.isStrategyTrade) {
     SIM.lastBadge = event.stateBadge || SIM.lastBadge;
@@ -831,7 +836,7 @@ function renderTradeTape() {
     return;
   }
 
-  const rows = SIM.history.slice(0, 14).map((event) => {
+  const rows = SIM.history.slice(0, 20).map((event) => {
     const flowClass = event.flow === "arbitrage" ? "arb" : "retail";
     const flowLabel = event.flow === "arbitrage" ? "Arb" : "Retail";
 
@@ -860,21 +865,19 @@ function renderTradeTape() {
 
 function renderChart(snapshot, event) {
   const width = 760;
-  const height = 440;
-  const margin = { left: 72, right: 24, top: 26, bottom: 58 };
+  const height = 320;
+  const margin = { left: 64, right: 20, top: 18, bottom: 44 };
   const innerW = width - margin.left - margin.right;
   const innerH = height - margin.top - margin.bottom;
 
-  const xVals = [snapshot.strategy.x, snapshot.normalizer.x, 100];
-  const xMin = Math.max(45, Math.min(...xVals) * 0.72);
-  const xMax = Math.max(130, Math.max(...xVals) * 1.36);
+  const targetX = Math.sqrt(snapshot.strategy.k / snapshot.fairPrice);
+  const targetY = snapshot.strategy.k / targetX;
+  const viewWindow = getChartViewWindow(snapshot, targetX, targetY);
 
-  const ySamples = [];
-  for (const amm of [snapshot.strategy, snapshot.normalizer]) {
-    ySamples.push(amm.k / xMin, amm.k / xMax, amm.y);
-  }
-  const yMin = Math.max(2800, Math.min(...ySamples) * 0.88);
-  const yMax = Math.max(12000, Math.max(...ySamples) * 1.12);
+  const xMin = viewWindow.xMin;
+  const xMax = viewWindow.xMax;
+  const yMin = viewWindow.yMin;
+  const yMax = viewWindow.yMax;
 
   const xToPx = (x) => margin.left + ((x - xMin) / (xMax - xMin)) * innerW;
   const yToPx = (y) => margin.top + (1 - (y - yMin) / (yMax - yMin)) * innerH;
@@ -891,14 +894,12 @@ function renderChart(snapshot, event) {
 
   const strategyPath = buildCurvePath(snapshot.strategy.k, xMin, xMax, xToPx, yToPx);
   const normalizerPath = buildCurvePath(snapshot.normalizer.k, xMin, xMax, xToPx, yToPx);
+  const trailPath = buildTrailPath(SIM.reserveTrail.slice(-90), xToPx, yToPx);
 
   const sx = xToPx(snapshot.strategy.x);
   const sy = yToPx(snapshot.strategy.y);
   const nx = xToPx(snapshot.normalizer.x);
   const ny = yToPx(snapshot.normalizer.y);
-
-  const targetX = Math.sqrt(snapshot.strategy.k / snapshot.fairPrice);
-  const targetY = snapshot.strategy.k / targetX;
   const tx = xToPx(targetX);
   const ty = yToPx(targetY);
 
@@ -927,6 +928,7 @@ function renderChart(snapshot, event) {
 
     <path d="${normalizerPath}" fill="none" stroke="#d2b8a4" stroke-width="3" stroke-dasharray="8 6" />
     <path d="${strategyPath}" fill="none" stroke="#7f421d" stroke-width="4" />
+    <path d="${trailPath}" fill="none" stroke="#9f663f" stroke-width="1.9" stroke-opacity="0.45" />
 
     ${arrow}
 
@@ -936,14 +938,15 @@ function renderChart(snapshot, event) {
 
     <circle cx="${tx.toFixed(2)}" cy="${ty.toFixed(2)}" r="4" fill="#6f7e96" fill-opacity="0.7" />
 
-    <text x="${(width - 145).toFixed(2)}" y="58" fill="#b48f76" font-size="58" font-family="Cormorant Garamond" font-style="italic">x . y = k</text>
-    <text x="${(width - 118).toFixed(2)}" y="86" fill="#c3a791" font-size="26" font-family="Cormorant Garamond" font-style="italic">dy / dx</text>
+    <text x="${(width - 148).toFixed(2)}" y="44" fill="#b48f76" font-size="42" font-family="Cormorant Garamond" font-style="italic">x . y = k</text>
+    <text x="${(width - 112).toFixed(2)}" y="66" fill="#c3a791" font-size="19" font-family="Cormorant Garamond" font-style="italic">dy / dx</text>
 
-    <text x="${(width / 2 - 48).toFixed(2)}" y="${(height - 18).toFixed(2)}" fill="#aa8d74" font-size="38" font-family="Cormorant Garamond">Reserve X</text>
-    <text x="35" y="${(height / 2 + 40).toFixed(2)}" fill="#aa8d74" font-size="38" font-family="Cormorant Garamond" transform="rotate(-90 35 ${height / 2 + 40})">Reserve Y</text>
+    <text x="${(width / 2 - 40).toFixed(2)}" y="${(height - 10).toFixed(2)}" fill="#aa8d74" font-size="28" font-family="Cormorant Garamond">Reserve X</text>
+    <text x="31" y="${(height / 2 + 24).toFixed(2)}" fill="#aa8d74" font-size="28" font-family="Cormorant Garamond" transform="rotate(-90 31 ${height / 2 + 24})">Reserve Y</text>
 
-    <text x="${(margin.left + 16).toFixed(2)}" y="${(margin.top + 20).toFixed(2)}" fill="#8b4a23" font-size="16" font-family="Space Mono">strategy</text>
-    <text x="${(margin.left + 16).toFixed(2)}" y="${(margin.top + 40).toFixed(2)}" fill="#b6957e" font-size="16" font-family="Space Mono">normalizer</text>
+    <text x="${(margin.left + 12).toFixed(2)}" y="${(margin.top + 16).toFixed(2)}" fill="#8b4a23" font-size="13" font-family="Space Mono">strategy</text>
+    <text x="${(margin.left + 12).toFixed(2)}" y="${(margin.top + 31).toFixed(2)}" fill="#b6957e" font-size="13" font-family="Space Mono">normalizer</text>
+    <text x="${(margin.left + 12).toFixed(2)}" y="${(margin.top + 46).toFixed(2)}" fill="#9f663f" font-size="12" font-family="Space Mono">recent trail (auto-zoom)</text>
   `;
 }
 
@@ -957,6 +960,91 @@ function buildCurvePath(k, xMin, xMax, xToPx, yToPx) {
     points.push(`${i === 0 ? "M" : "L"}${xToPx(x).toFixed(2)} ${yToPx(y).toFixed(2)}`);
   }
   return points.join(" ");
+}
+
+function buildTrailPath(points, xToPx, yToPx) {
+  if (!points || points.length < 2) return "";
+  const trail = [];
+  for (let i = 0; i < points.length; i += 1) {
+    const prefix = i === 0 ? "M" : "L";
+    trail.push(`${prefix}${xToPx(points[i].x).toFixed(2)} ${yToPx(points[i].y).toFixed(2)}`);
+  }
+  return trail.join(" ");
+}
+
+function getChartViewWindow(snapshot, targetX, targetY) {
+  const recent = SIM.reserveTrail.slice(-80);
+  const xVals = recent.map((point) => point.x);
+  const yVals = recent.map((point) => point.y);
+
+  xVals.push(snapshot.strategy.x, snapshot.normalizer.x, targetX);
+  yVals.push(snapshot.strategy.y, snapshot.normalizer.y, targetY);
+
+  let rawXMin = Math.min(...xVals);
+  let rawXMax = Math.max(...xVals);
+  let rawYMin = Math.min(...yVals);
+  let rawYMax = Math.max(...yVals);
+
+  const minXSpan = Math.max(snapshot.strategy.x * 0.12, 8);
+  const minYSpan = Math.max(snapshot.strategy.y * 0.12, 900);
+
+  if (rawXMax - rawXMin < minXSpan) {
+    const centerX = (rawXMin + rawXMax) / 2;
+    rawXMin = centerX - minXSpan / 2;
+    rawXMax = centerX + minXSpan / 2;
+  }
+
+  if (rawYMax - rawYMin < minYSpan) {
+    const centerY = (rawYMin + rawYMax) / 2;
+    rawYMin = centerY - minYSpan / 2;
+    rawYMax = centerY + minYSpan / 2;
+  }
+
+  const xPad = (rawXMax - rawXMin) * 0.28;
+  const yPad = (rawYMax - rawYMin) * 0.34;
+
+  let nextWindow = {
+    xMin: Math.max(1, rawXMin - xPad),
+    xMax: rawXMax + xPad,
+    yMin: Math.max(1, rawYMin - yPad),
+    yMax: rawYMax + yPad,
+  };
+
+  if (SIM.viewWindow) {
+    const alpha = 0.28;
+    nextWindow = {
+      xMin: lerp(SIM.viewWindow.xMin, nextWindow.xMin, alpha),
+      xMax: lerp(SIM.viewWindow.xMax, nextWindow.xMax, alpha),
+      yMin: lerp(SIM.viewWindow.yMin, nextWindow.yMin, alpha),
+      yMax: lerp(SIM.viewWindow.yMax, nextWindow.yMax, alpha),
+    };
+  }
+
+  if (nextWindow.xMax - nextWindow.xMin < 1) {
+    nextWindow.xMax = nextWindow.xMin + 1;
+  }
+  if (nextWindow.yMax - nextWindow.yMin < 1) {
+    nextWindow.yMax = nextWindow.yMin + 1;
+  }
+
+  SIM.viewWindow = nextWindow;
+  return nextWindow;
+}
+
+function trackStrategyPoint(snapshot) {
+  const point = { x: snapshot.strategy.x, y: snapshot.strategy.y };
+  const last = SIM.reserveTrail[SIM.reserveTrail.length - 1];
+  const changed = !last
+    || Math.abs(last.x - point.x) > 1e-6
+    || Math.abs(last.y - point.y) > 1e-3;
+
+  if (changed) {
+    SIM.reserveTrail.push(point);
+  }
+
+  if (SIM.reserveTrail.length > 180) {
+    SIM.reserveTrail.shift();
+  }
 }
 
 function renderCode(code) {
@@ -1009,6 +1097,10 @@ function clampBps(value) {
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
+}
+
+function lerp(start, end, alpha) {
+  return start + (end - start) * alpha;
 }
 
 function randomBetween(min, max) {
