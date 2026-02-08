@@ -112,7 +112,7 @@ export function CodePanel({
   }, [compileResult?.ok, compileResult?.strategyId])
 
   return (
-    <section className="code-panel reveal delay-1">
+    <section className={`code-panel ${activeTab === 'custom' ? 'code-panel-custom' : 'code-panel-builtin'} reveal delay-1`}>
       <div className="panel-head panel-head-stack">
         <div className="panel-head-row">
           <h2>Strategy Code</h2>
@@ -145,33 +145,30 @@ export function CodePanel({
         </div>
 
         {activeTab === 'builtin' ? (
-          <label className="strategy-picker" htmlFor="availableStrategySelect">
-            <span>Available</span>
-            <div className="strategy-picker-controls single-control">
-              <select
-                id="availableStrategySelect"
-                value={selectedAvailableValue}
-                onChange={(event) => onSelectStrategy(decodeStrategyRef(event.target.value))}
-              >
-                <optgroup label="Built-in">
-                  {builtinOptions.map((option) => (
+          <div className="strategy-picker strategy-picker-wide">
+            <select
+              id="availableStrategySelect"
+              value={selectedAvailableValue}
+              onChange={(event) => onSelectStrategy(decodeStrategyRef(event.target.value))}
+            >
+              <optgroup label="Built-in">
+                {builtinOptions.map((option) => (
+                  <option key={`${option.kind}-${option.id}`} value={`${option.kind}:${option.id}`}>
+                    {option.name}
+                  </option>
+                ))}
+              </optgroup>
+              {customOptions.length > 0 ? (
+                <optgroup label="Custom">
+                  {customOptions.map((option) => (
                     <option key={`${option.kind}-${option.id}`} value={`${option.kind}:${option.id}`}>
                       {option.name}
                     </option>
                   ))}
                 </optgroup>
-                {customOptions.length > 0 ? (
-                  <optgroup label="Custom">
-                    {customOptions.map((option) => (
-                      <option key={`${option.kind}-${option.id}`} value={`${option.kind}:${option.id}`}>
-                        {option.name}
-                      </option>
-                    ))}
-                  </optgroup>
-                ) : null}
-              </select>
-            </div>
-          </label>
+              ) : null}
+            </select>
+          </div>
         ) : (
           <p className="custom-runtime-note">
             Use this pane only for editing. Compile will save locally and add it to <strong>Available strategies</strong>.
@@ -179,7 +176,7 @@ export function CodePanel({
         )}
       </div>
 
-      {diagnostics.length > 0 ? (
+      {activeTab === 'builtin' && diagnostics.length > 0 ? (
         <div className="inline-diagnostics" role="status" aria-live="polite">
           {diagnostics.slice(0, 2).map((diagnostic, index) => (
             <p key={`${diagnostic.message}-${index}`} className={diagnostic.severity === 'error' ? 'diagnostic-error' : 'diagnostic-warning'}>
@@ -190,33 +187,35 @@ export function CodePanel({
         </div>
       ) : null}
 
-      <div ref={containerRef} id="codeView" className="code-view" aria-label="Strategy code">
-        {showExplanationOverlay && firstHighlightedLine === null ? (
-          <div className="code-overlay-fallback" role="note">
-            <span className="line-explain-label">What This Line Did</span>
-            <span>{codeExplanation}</span>
-          </div>
-        ) : null}
-
-        {lines.map((line, index) => {
-          const lineNumber = index + 1
-          const active = lineSet.has(lineNumber)
-          const renderOverlay = showExplanationOverlay && lineNumber === firstHighlightedLine && active
-
-          return (
-            <div key={lineNumber} className={`code-line${active ? ' active' : ''}`} data-line={lineNumber}>
-              <span className="line-no">{String(lineNumber).padStart(2, '0')}</span>
-              <span className="line-text">{line || '\u00a0'}</span>
-              {renderOverlay ? (
-                <div className="line-explain-popover visible" role="note">
-                  <span className="line-explain-label">What This Line Did</span>
-                  <span>{codeExplanation}</span>
-                </div>
-              ) : null}
+      {activeTab === 'builtin' ? (
+        <div ref={containerRef} id="codeView" className="code-view" aria-label="Strategy code">
+          {showExplanationOverlay && firstHighlightedLine === null ? (
+            <div className="code-overlay-fallback" role="note">
+              <span className="line-explain-label">What This Line Did</span>
+              <span>{codeExplanation}</span>
             </div>
-          )
-        })}
-      </div>
+          ) : null}
+
+          {lines.map((line, index) => {
+            const lineNumber = index + 1
+            const active = lineSet.has(lineNumber)
+            const renderOverlay = showExplanationOverlay && lineNumber === firstHighlightedLine && active
+
+            return (
+              <div key={lineNumber} className={`code-line${active ? ' active' : ''}`} data-line={lineNumber}>
+                <span className="line-no">{String(lineNumber).padStart(2, '0')}</span>
+                <span className="line-text">{line || '\u00a0'}</span>
+                {renderOverlay ? (
+                  <div className="line-explain-popover visible" role="note">
+                    <span className="line-explain-label">What This Line Did</span>
+                    <span>{codeExplanation}</span>
+                  </div>
+                ) : null}
+              </div>
+            )
+          })}
+        </div>
+      ) : null}
 
       <section className={`strategy-lab ${activeTab === 'custom' ? 'open' : 'closed'}`}>
         <div className="strategy-lab-head">
