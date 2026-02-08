@@ -97,8 +97,22 @@ export function AmmChart({ snapshot, reserveTrail, lastEvent, theme, viewWindow,
   }, [autoZoom, baseView.liveWindow, baseView.targetX, baseView.targetY, frozenWindow, geometry.height, geometry.margin.bottom, geometry.margin.left, geometry.margin.right, geometry.margin.top, geometry.width, lastEvent, reserveTrail, snapshot])
 
   return (
-    <svg id="curveChart" viewBox={`0 0 ${geometry.width} ${geometry.height}`} role="img" aria-label="AMM reserve curve chart">
+    <svg
+      id="curveChart"
+      viewBox={`0 0 ${geometry.width} ${geometry.height}`}
+      preserveAspectRatio="none"
+      role="img"
+      aria-label="AMM reserve curve chart"
+    >
       <defs>
+        <clipPath id="plotClip">
+          <rect
+            x={geometry.margin.left}
+            y={geometry.margin.top}
+            width={chart.innerW}
+            height={chart.innerH}
+          />
+        </clipPath>
         <marker id="arrowHead" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
           <path d="M 0 0 L 10 5 L 0 10 z" fill={palette.arrowHead} />
         </marker>
@@ -153,35 +167,37 @@ export function AmmChart({ snapshot, reserveTrail, lastEvent, theme, viewWindow,
         strokeWidth="1.2"
       />
 
-      <path d={chart.normalizerPath} fill="none" stroke={palette.normalizerCurve} strokeWidth="1.4" strokeDasharray="7 6" />
-      <path d={chart.strategyPath} fill="none" stroke={palette.strategyCurve} strokeWidth="2.7" />
-      <path d={chart.trailPath} fill="none" stroke={palette.trail} strokeWidth="1.15" strokeOpacity="0.42" />
+      <g clipPath="url(#plotClip)">
+        <path d={chart.normalizerPath} fill="none" stroke={palette.normalizerCurve} strokeWidth="1.4" strokeDasharray="7 6" />
+        <path d={chart.strategyPath} fill="none" stroke={palette.strategyCurve} strokeWidth="2.7" />
+        <path d={chart.trailPath} fill="none" stroke={palette.trail} strokeWidth="1.15" strokeOpacity="0.42" />
 
-      {chart.arrow ? (
-        <line
-          x1={chart.arrow.fromX}
-          y1={chart.arrow.fromY}
-          x2={chart.arrow.toX}
-          y2={chart.arrow.toY}
-          stroke={lastEvent?.isStrategyTrade ? palette.arrowStrategy : palette.arrowOther}
-          strokeWidth="1.45"
-          markerEnd="url(#arrowHead)"
+        {chart.arrow ? (
+          <line
+            x1={chart.arrow.fromX}
+            y1={chart.arrow.fromY}
+            x2={chart.arrow.toX}
+            y2={chart.arrow.toY}
+            stroke={lastEvent?.isStrategyTrade ? palette.arrowStrategy : palette.arrowOther}
+            strokeWidth="1.45"
+            markerEnd="url(#arrowHead)"
+          />
+        ) : null}
+
+        <circle cx={chart.strategyPoint.x} cy={chart.strategyPoint.y} r="6.2" fill={palette.strategyDot} fillOpacity="0.8" />
+        <circle cx={chart.strategyPoint.x} cy={chart.strategyPoint.y} r="13" fill="none" stroke={palette.strategyRing} strokeWidth="0.85" />
+
+        <circle
+          cx={chart.normalizerPoint.x}
+          cy={chart.normalizerPoint.y}
+          r="4.6"
+          fill={palette.normalizerDotFill}
+          stroke={palette.normalizerDotStroke}
+          strokeWidth="1.25"
         />
-      ) : null}
 
-      <circle cx={chart.strategyPoint.x} cy={chart.strategyPoint.y} r="6.2" fill={palette.strategyDot} fillOpacity="0.8" />
-      <circle cx={chart.strategyPoint.x} cy={chart.strategyPoint.y} r="13" fill="none" stroke={palette.strategyRing} strokeWidth="0.85" />
-
-      <circle
-        cx={chart.normalizerPoint.x}
-        cy={chart.normalizerPoint.y}
-        r="4.6"
-        fill={palette.normalizerDotFill}
-        stroke={palette.normalizerDotStroke}
-        strokeWidth="1.25"
-      />
-
-      <circle cx={chart.targetPoint.x} cy={chart.targetPoint.y} r="2.8" fill={palette.targetDot} fillOpacity="0.62" />
+        <circle cx={chart.targetPoint.x} cy={chart.targetPoint.y} r="2.8" fill={palette.targetDot} fillOpacity="0.62" />
+      </g>
 
       <text x={geometry.width - 188} y="42" fill={palette.labelMain} fontSize="28" fontFamily="Cormorant Garamond" fontStyle="italic">
         x · y = k

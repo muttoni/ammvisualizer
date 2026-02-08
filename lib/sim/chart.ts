@@ -90,18 +90,34 @@ export function getChartViewWindow(
     rawYMax = centerY + minYSpan / 2
   }
 
-  const xPad = (rawXMax - rawXMin) * 0.28
-  const yPad = (rawYMax - rawYMin) * 0.34
+  const xPad = (rawXMax - rawXMin) * 0.15
+  const yPad = (rawYMax - rawYMin) * 0.2
+
+  const xMin = Math.max(1, rawXMin - xPad)
+  const xMax = rawXMax + xPad
+
+  // Include curve-edge values in Y bounds so the rendered curve stays inside the plot box.
+  const curveEdgeY = [
+    snapshot.strategy.k / xMin,
+    snapshot.strategy.k / xMax,
+    snapshot.normalizer.k / xMin,
+    snapshot.normalizer.k / xMax,
+  ].filter((value) => Number.isFinite(value))
+
+  if (curveEdgeY.length > 0) {
+    rawYMin = Math.min(rawYMin, ...curveEdgeY)
+    rawYMax = Math.max(rawYMax, ...curveEdgeY)
+  }
 
   let nextWindow: ChartWindow = {
-    xMin: Math.max(1, rawXMin - xPad),
-    xMax: rawXMax + xPad,
+    xMin,
+    xMax,
     yMin: Math.max(1, rawYMin - yPad),
     yMax: rawYMax + yPad,
   }
 
   if (previousWindow) {
-    const alpha = 0.28
+    const alpha = 0.36
     nextWindow = {
       xMin: lerp(previousWindow.xMin, nextWindow.xMin, alpha),
       xMax: lerp(previousWindow.xMax, nextWindow.xMax, alpha),
