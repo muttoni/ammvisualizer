@@ -1,9 +1,9 @@
 'use client'
 
-import { buildDepthStats } from '../lib/sim/math'
 import { SPEED_PROFILE } from '../lib/sim/constants'
-import { formatNum, formatSigned } from '../lib/sim/utils'
+import { buildDepthStats } from '../lib/sim/math'
 import type { ThemeMode, TradeEvent, WorkerUiState } from '../lib/sim/types'
+import { formatNum, formatSigned } from '../lib/sim/utils'
 import { AmmChart } from './AmmChart'
 
 interface MarketPanelProps {
@@ -54,113 +54,125 @@ export function MarketPanel({
   const maxSell5 = Math.max(strategyDepth.sellDepth5, normalizerDepth.sellDepth5, 1e-9)
 
   return (
-    <section className="panel market-panel reveal delay-2">
-      <div className="panel-head">
+    <section className="market-panel reveal delay-2">
+      <div className="panel-head market-head">
         <h2>Simulated Market</h2>
         <span id="clockLabel" className="clock">
           Step {snapshot.step} | Trade {state.tradeCount}
         </span>
       </div>
 
-      <div className="market-controls">
-        <div className="button-row market-button-row">
-          <button id="playBtn" type="button" onClick={onPlayPause}>
-            {state.isPlaying ? 'Pause' : 'Play'}
-          </button>
-          <button id="stepBtn" type="button" onClick={onStep}>
-            Step
-          </button>
-          <button id="resetBtn" type="button" onClick={onReset}>
-            Reset
-          </button>
-        </div>
+      <div className="market-grid">
+        <div className="market-main">
+          <div className="market-controls">
+            <div className="button-row market-button-row">
+              <button id="playBtn" type="button" onClick={onPlayPause}>
+                {state.isPlaying ? 'Pause' : 'Play'}
+              </button>
+              <button id="stepBtn" type="button" onClick={onStep}>
+                Step
+              </button>
+              <button id="resetBtn" type="button" onClick={onReset}>
+                Reset
+              </button>
+            </div>
 
-        <label className="control speed-control" htmlFor="speedRange">
-          <span>Speed</span>
-          <div className="speed-inner">
-            <input
-              id="speedRange"
-              type="range"
-              min="1"
-              max="6"
-              step="1"
-              value={playbackSpeed}
-              onChange={(event) => onPlaybackSpeedChange(Number(event.target.value))}
-            />
-            <strong id="speedLabel">{(SPEED_PROFILE[playbackSpeed] ?? SPEED_PROFILE[3]).label}</strong>
+            <label className="control speed-control" htmlFor="speedRange">
+              <span>Speed</span>
+              <div className="speed-inner">
+                <input
+                  id="speedRange"
+                  type="range"
+                  min="1"
+                  max="6"
+                  step="1"
+                  value={playbackSpeed}
+                  onChange={(event) => onPlaybackSpeedChange(Number(event.target.value))}
+                />
+                <strong id="speedLabel">{(SPEED_PROFILE[playbackSpeed] ?? SPEED_PROFILE[3]).label}</strong>
+              </div>
+            </label>
           </div>
-        </label>
-      </div>
 
-      <div className="chart-wrap">
-        <AmmChart
-          snapshot={snapshot}
-          reserveTrail={state.reserveTrail}
-          lastEvent={state.lastEvent}
-          theme={theme}
-          viewWindow={state.viewWindow}
-        />
-      </div>
+          <div className="chart-wrap terminal-surface">
+            <AmmChart
+              snapshot={snapshot}
+              reserveTrail={state.reserveTrail}
+              lastEvent={state.lastEvent}
+              theme={theme}
+              viewWindow={state.viewWindow}
+            />
+          </div>
 
-      <div className="metrics">
-        <div className="metric-card">
-          <span>Fair Price</span>
-          <strong id="fairPriceMetric">{formatNum(snapshot.fairPrice, 4)} Y/X</strong>
-        </div>
-        <div className="metric-card">
-          <span>Strategy Spot</span>
-          <strong id="strategySpotMetric">{formatNum(strategySpot, 4)} Y/X</strong>
-        </div>
-        <div className="metric-card">
-          <span>Strategy Fees</span>
-          <strong id="feesMetric">
-            bid {formatNum(snapshot.strategy.bid, 0)} bps | ask {formatNum(snapshot.strategy.ask, 0)} bps
-          </strong>
-        </div>
-        <div className="metric-card">
-          <span>Cumulative Edge</span>
-          <strong id="edgeMetric">
-            {formatSigned(snapshot.edge.total)} (retail {formatSigned(snapshot.edge.retail)}, arb {formatSigned(snapshot.edge.arb)})
-          </strong>
-        </div>
-      </div>
+          <div className="market-bottom">
+            <section className="metrics-panel terminal-surface">
+              <div className="metrics">
+                <div className="metric-card">
+                  <span>Fair Price</span>
+                  <strong id="fairPriceMetric">{formatNum(snapshot.fairPrice, 4)} Y/X</strong>
+                </div>
+                <div className="metric-card">
+                  <span>Strategy Spot</span>
+                  <strong id="strategySpotMetric">{formatNum(strategySpot, 4)} Y/X</strong>
+                </div>
+                <div className="metric-card">
+                  <span>Strategy Fees</span>
+                  <strong id="feesMetric">
+                    bid {formatNum(snapshot.strategy.bid, 0)} bps | ask {formatNum(snapshot.strategy.ask, 0)} bps
+                  </strong>
+                </div>
+                <div className="metric-card">
+                  <span>Cumulative Edge</span>
+                  <strong id="edgeMetric">
+                    {formatSigned(snapshot.edge.total)} (retail {formatSigned(snapshot.edge.retail)}, arb {formatSigned(snapshot.edge.arb)})
+                  </strong>
+                </div>
+              </div>
+            </section>
 
-      <div className="depth-section">
-        <div className="depth-head">
-          <h3>Per-Pool Depth</h3>
-          <span id="depthLegend" className="depth-legend">
-            to 1% and 5% price impact
-          </span>
+            <section className="depth-section terminal-surface">
+              <div className="depth-head">
+                <h3>Per-Pool Depth</h3>
+                <span id="depthLegend" className="depth-legend">
+                  to 1% and 5% price impact
+                </span>
+              </div>
+
+              <div id="depthView" className="depth-view">
+                <DepthCard
+                  poolLabel="Strategy"
+                  poolClass="strategy"
+                  feeLabel={`${snapshot.strategy.bid}/${snapshot.strategy.ask} bps`}
+                  stats={strategyDepth}
+                  buyMax={maxBuy5}
+                  sellMax={maxSell5}
+                />
+                <DepthCard
+                  poolLabel="Normalizer"
+                  poolClass="normalizer"
+                  feeLabel={`${snapshot.normalizer.bid}/${snapshot.normalizer.ask} bps`}
+                  stats={normalizerDepth}
+                  buyMax={maxBuy5}
+                  sellMax={maxSell5}
+                />
+              </div>
+            </section>
+          </div>
         </div>
 
-        <div id="depthView" className="depth-view">
-          <DepthCard
-            poolLabel="Strategy"
-            poolClass="strategy"
-            feeLabel={`${snapshot.strategy.bid}/${snapshot.strategy.ask} bps`}
-            stats={strategyDepth}
-            buyMax={maxBuy5}
-            sellMax={maxSell5}
-          />
-          <DepthCard
-            poolLabel="Normalizer"
-            poolClass="normalizer"
-            feeLabel={`${snapshot.normalizer.bid}/${snapshot.normalizer.ask} bps`}
-            stats={normalizerDepth}
-            buyMax={maxBuy5}
-            sellMax={maxSell5}
-          />
-        </div>
-      </div>
+        <aside className="trade-column terminal-surface">
+          <div className="trade-column-head">
+            <h3>Trade Tape</h3>
+            <span>{state.history.length} events</span>
+          </div>
 
-      <div className="trade-section">
-        <h3>Trade Tape</h3>
-        <ul id="tradeTape" className="trade-tape">
-          {state.history.length === 0 ? <li className="trade-row">No trades yet. Press Step or Play.</li> : null}
-          {state.history.map((event) => (
-            <TradeTapeRow key={event.id} event={event} />
-          ))}
-        </ul>
+          <ul id="tradeTape" className="trade-tape">
+            {state.history.length === 0 ? <li className="trade-row">No trades yet. Press Step or Play.</li> : null}
+            {state.history.map((event) => (
+              <TradeTapeRow key={event.id} event={event} />
+            ))}
+          </ul>
+        </aside>
       </div>
     </section>
   )

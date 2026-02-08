@@ -2,10 +2,8 @@
 
 import { useEffect } from 'react'
 import { CodePanel } from '../components/CodePanel'
-import { FooterLinks } from '../components/FooterLinks'
 import { HeaderActions } from '../components/HeaderActions'
 import { MarketPanel } from '../components/MarketPanel'
-import { StrategyEditorDrawer } from '../components/StrategyEditorDrawer'
 import { useSimulationWorker } from '../hooks/useSimulationWorker'
 import { useUiStore } from '../store/useUiStore'
 
@@ -14,12 +12,10 @@ export default function Page() {
   const playbackSpeed = useUiStore((state) => state.playbackSpeed)
   const maxTapeRows = useUiStore((state) => state.maxTapeRows)
   const strategyRef = useUiStore((state) => state.strategyRef)
-  const isEditorOpen = useUiStore((state) => state.isEditorOpen)
 
   const setTheme = useUiStore((state) => state.setTheme)
   const setPlaybackSpeed = useUiStore((state) => state.setPlaybackSpeed)
   const setStrategyRef = useUiStore((state) => state.setStrategyRef)
-  const setEditorOpen = useUiStore((state) => state.setEditorOpen)
 
   const {
     ready,
@@ -66,7 +62,6 @@ export default function Page() {
         <HeaderActions
           theme={theme}
           onToggleTheme={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-          onOpenEditor={() => setEditorOpen(true)}
         />
 
         {workerError ? <div className="worker-error">Worker error: {workerError}</div> : null}
@@ -80,8 +75,12 @@ export default function Page() {
             codeExplanation={workerState.lastEvent.codeExplanation}
             stateBadge={workerState.lastEvent.stateBadge}
             diagnostics={workerState.diagnostics}
+            library={library}
+            compileResult={compileResult}
             onSelectStrategy={setStrategyRef}
-            onOpenEditor={() => setEditorOpen(true)}
+            onCompileCustom={controls.compileCustom}
+            onSaveCustom={controls.saveCustom}
+            onDeleteCustom={controls.deleteCustom}
           />
 
           <MarketPanel
@@ -101,21 +100,7 @@ export default function Page() {
             onReset={controls.reset}
           />
         </main>
-
-        <FooterLinks />
       </div>
-
-      <StrategyEditorDrawer
-        isOpen={isEditorOpen}
-        compileResult={compileResult}
-        library={library}
-        selectedStrategyRef={strategyRef}
-        onClose={() => setEditorOpen(false)}
-        onCompile={controls.compileCustom}
-        onSave={controls.saveCustom}
-        onDelete={controls.deleteCustom}
-        onSelectStrategy={setStrategyRef}
-      />
     </>
   )
 }
