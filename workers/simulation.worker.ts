@@ -155,6 +155,36 @@ async function handleMessage(message: WorkerInboundMessage): Promise<void> {
       break
     }
 
+    case 'COMPILE_AND_ACTIVATE_CUSTOM': {
+      stopPlayback()
+      const result = await saveCustomStrategy(message.payload)
+      worker.postMessage({
+        type: 'COMPILE_RESULT',
+        payload: {
+          result,
+        },
+      })
+
+      if (result.ok) {
+        config = {
+          ...config,
+          strategyRef: {
+            kind: 'custom',
+            id: result.strategyId,
+          },
+        }
+        await ensureEngineInitialized()
+        const activeStrategy = await resolveStrategyRuntime(config.strategyRef)
+        engine!.setStrategy(activeStrategy)
+        engine!.setConfig(config)
+        await resetEngine()
+      }
+
+      emitLibrary()
+      emitState()
+      break
+    }
+
     case 'SAVE_CUSTOM': {
       const result = await saveCustomStrategy(message.payload)
       worker.postMessage({

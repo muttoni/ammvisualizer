@@ -217,6 +217,31 @@ h3 {
   background: color-mix(in srgb, var(--panel) 78%, white 22%);
 }
 
+.strategy-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.strategy-tab {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: linear-gradient(180deg, var(--panel-strong) 0%, var(--panel-soft) 100%);
+  color: var(--ink-soft);
+  font-family: 'Space Mono', 'Courier New', monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 7px 9px;
+  cursor: pointer;
+}
+
+.strategy-tab.active {
+  border-color: var(--accent-soft);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 13%, var(--panel-strong));
+}
+
 .strategy-picker {
   display: grid;
   grid-template-columns: 70px minmax(0, 1fr);
@@ -233,6 +258,16 @@ h3 {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 8px;
+}
+
+.strategy-picker-controls.single-control {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.custom-runtime-note {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 0.78rem;
 }
 
 .strategy-picker select,
@@ -283,6 +318,11 @@ h3 {
 .library-actions button:hover {
   border-color: var(--accent-soft);
   color: var(--accent);
+}
+
+.editor-actions button:disabled {
+  opacity: 0.48;
+  cursor: not-allowed;
 }
 
 .code-panel {
@@ -389,6 +429,10 @@ h3 {
   border-top: 1px solid var(--line-soft);
   margin-top: 8px;
   background: var(--panel-soft);
+}
+
+.strategy-lab.closed {
+  display: none;
 }
 
 .strategy-lab-head {
@@ -903,6 +947,10 @@ h3 {
   }
 
   .strategy-picker {
+    grid-template-columns: 1fr;
+  }
+
+  .strategy-tabs {
     grid-template-columns: 1fr;
   }
 

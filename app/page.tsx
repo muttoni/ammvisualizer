@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { CodePanel } from '../components/CodePanel'
 import { HeaderActions } from '../components/HeaderActions'
 import { MarketPanel } from '../components/MarketPanel'
@@ -12,10 +12,23 @@ export default function Page() {
   const playbackSpeed = useUiStore((state) => state.playbackSpeed)
   const maxTapeRows = useUiStore((state) => state.maxTapeRows)
   const strategyRef = useUiStore((state) => state.strategyRef)
+  const [customRuntimeEnabled, setCustomRuntimeEnabled] = useState(false)
 
   const setTheme = useUiStore((state) => state.setTheme)
   const setPlaybackSpeed = useUiStore((state) => state.setPlaybackSpeed)
   const setStrategyRef = useUiStore((state) => state.setStrategyRef)
+
+  const safeStrategyRef = useMemo(() => {
+    if (customRuntimeEnabled) {
+      return strategyRef
+    }
+
+    if (strategyRef.kind === 'custom') {
+      return { kind: 'builtin', id: 'baseline30' } as const
+    }
+
+    return strategyRef
+  }, [customRuntimeEnabled, strategyRef])
 
   const {
     ready,
@@ -28,7 +41,7 @@ export default function Page() {
     seed: 1337,
     playbackSpeed,
     maxTapeRows,
-    strategyRef,
+    strategyRef: safeStrategyRef,
   })
 
   useEffect(() => {
@@ -43,6 +56,12 @@ export default function Page() {
       setStrategyRef(activeRef)
     }
   }, [setStrategyRef, strategyRef.id, strategyRef.kind, workerState])
+
+  useEffect(() => {
+    if (!customRuntimeEnabled && strategyRef.kind === 'custom') {
+      setStrategyRef({ kind: 'builtin', id: 'baseline30' })
+    }
+  }, [customRuntimeEnabled, setStrategyRef, strategyRef.kind])
 
   if (!ready || !workerState) {
     return (
@@ -78,8 +97,10 @@ export default function Page() {
             library={library}
             compileResult={compileResult}
             onSelectStrategy={setStrategyRef}
-            onCompileCustom={controls.compileCustom}
-            onSaveCustom={controls.saveCustom}
+            onCompileAndActivateCustom={(payload) => {
+              setCustomRuntimeEnabled(true)
+              controls.compileAndActivateCustom(payload)
+            }}
             onDeleteCustom={controls.deleteCustom}
           />
 

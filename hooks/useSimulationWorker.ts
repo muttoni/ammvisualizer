@@ -124,6 +124,11 @@ export function useSimulationWorker({ seed, playbackSpeed, maxTapeRows, strategy
             nameHint,
           },
         }),
+      compileAndActivateCustom: (payload: { id?: string; name: string; source: string }) =>
+        post({
+          type: 'COMPILE_AND_ACTIVATE_CUSTOM',
+          payload,
+        }),
       saveCustom: (payload: { id?: string; name: string; source: string }) =>
         post({
           type: 'SAVE_CUSTOM',

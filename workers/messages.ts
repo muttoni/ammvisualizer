@@ -45,6 +45,14 @@ export type WorkerInboundMessage =
       }
     }
   | {
+      type: 'COMPILE_AND_ACTIVATE_CUSTOM'
+      payload: {
+        id?: string
+        name: string
+        source: string
+      }
+    }
+  | {
       type: 'SAVE_CUSTOM'
       payload: {
         id?: string
