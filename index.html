@@ -15,26 +15,7 @@
         <p>Code on the left, live market on the right. Step through every trade.</p>
       </div>
 
-      <div class="controls">
-        <label class="control">
-          <span>Strategy</span>
-          <select id="strategySelect"></select>
-        </label>
-
-        <label class="control speed-control">
-          <span>Speed</span>
-          <div class="speed-inner">
-            <input id="speedRange" type="range" min="1" max="6" step="1" value="3" />
-            <strong id="speedLabel">1.0x</strong>
-          </div>
-        </label>
-
-        <div class="button-row">
-          <button id="playBtn" type="button">Play</button>
-          <button id="stepBtn" type="button">Step</button>
-          <button id="resetBtn" type="button">Reset</button>
-        </div>
-
+      <div class="top-actions">
         <button id="themeToggleBtn" class="theme-toggle" type="button" aria-label="Toggle dark mode">
           Dark Mode
         </button>
@@ -43,9 +24,15 @@
 
     <main class="layout">
       <section class="panel code-panel reveal delay-1">
-        <div class="panel-head">
-          <h2>Strategy Code</h2>
-          <span id="strategyStateBadge" class="badge">-</span>
+        <div class="panel-head panel-head-stack">
+          <div class="panel-head-row">
+            <h2>Strategy Code</h2>
+            <span id="strategyStateBadge" class="badge">-</span>
+          </div>
+          <label class="strategy-picker" for="strategySelect">
+            <span>Strategy</span>
+            <select id="strategySelect"></select>
+          </label>
         </div>
 
         <div id="codeView" class="code-view" aria-label="Strategy code"></div>
@@ -60,6 +47,22 @@
         <div class="panel-head">
           <h2>Simulated Market</h2>
           <span id="clockLabel" class="clock">Step 0 | Trade 0</span>
+        </div>
+
+        <div class="market-controls">
+          <label class="control speed-control">
+            <span>Speed</span>
+            <div class="speed-inner">
+              <input id="speedRange" type="range" min="1" max="6" step="1" value="3" />
+              <strong id="speedLabel">1.0x</strong>
+            </div>
+          </label>
+
+          <div class="button-row">
+            <button id="playBtn" type="button">Play</button>
+            <button id="stepBtn" type="button">Step</button>
+            <button id="resetBtn" type="button">Reset</button>
+          </div>
         </div>
 
         <div class="chart-wrap">
