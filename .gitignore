@@ -1,0 +1,7 @@
+.next
+node_modules
+out
+*.log
+.DS_Store
+coverage
+public/solc/soljson.js
