@@ -96,7 +96,6 @@ export default function Page() {
             code={workerState.currentStrategy.code}
             highlightedLines={workerState.lastEvent.codeLines}
             codeExplanation={workerState.lastEvent.codeExplanation}
-            stateBadge={workerState.lastEvent.stateBadge}
             diagnostics={workerState.diagnostics}
             library={library}
             compileResult={compileResult}

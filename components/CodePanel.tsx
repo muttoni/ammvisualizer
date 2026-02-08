@@ -10,7 +10,6 @@ interface CodePanelProps {
   code: string
   highlightedLines: number[]
   codeExplanation: string
-  stateBadge: string
   diagnostics: CompilerDiagnostic[]
   library: StrategyLibraryItem[]
   compileResult: CustomCompileResult | null
@@ -45,7 +44,6 @@ export function CodePanel({
   code,
   highlightedLines,
   codeExplanation,
-  stateBadge,
   diagnostics,
   library,
   compileResult,
@@ -130,9 +128,6 @@ export function CodePanel({
         <div className="panel-head-row">
           <h2>Strategy Code</h2>
           <div className="code-head-actions">
-            <span id="strategyStateBadge" className="badge">
-              {stateBadge}
-            </span>
             <button type="button" className="small-control overlay-toggle" onClick={onToggleExplanationOverlay}>
               {showExplanationOverlay ? 'Hide Explanation' : 'Show Explanation'}
             </button>

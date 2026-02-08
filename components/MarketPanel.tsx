@@ -31,6 +31,9 @@ export function MarketPanel({
 }: MarketPanelProps) {
   const snapshot = state.snapshot
   const strategySpot = snapshot.strategy.y / snapshot.strategy.x
+  const latestStrategyEvent = state.history.find((event) => event.isStrategyTrade && event.trade)
+  const tradeRatio = latestStrategyEvent?.trade ? latestStrategyEvent.trade.amountY / Math.max(latestStrategyEvent.trade.reserveY, 1e-9) : null
+  const slotFeeBps = extractSlotFeeBps(latestStrategyEvent?.stateBadge ?? state.lastEvent.stateBadge)
 
   const strategyDepth = buildDepthStats({
     name: 'Strategy',
@@ -141,6 +144,14 @@ export function MarketPanel({
                   </strong>
                 </div>
                 <div className="metric-card">
+                  <span>Slot[0] Fee</span>
+                  <strong>{slotFeeBps === null ? 'n/a' : `${formatNum(slotFeeBps, 0)} bps`}</strong>
+                </div>
+                <div className="metric-card">
+                  <span>Trade Ratio</span>
+                  <strong>{tradeRatio === null ? 'n/a' : `${formatNum(tradeRatio * 100, 2)}%`}</strong>
+                </div>
+                <div className="metric-card">
                   <span>Cumulative Edge</span>
                   <strong id="edgeMetric">
                     {formatSigned(snapshot.edge.total)} (retail {formatSigned(snapshot.edge.retail)}, arb {formatSigned(snapshot.edge.arb)})
@@ -229,6 +240,13 @@ function ControlIcon({ kind }: { kind: 'play' | 'pause' | 'step' | 'reset' }) {
       <path d="M4 2.5v11l8-5.5z" />
     </svg>
   )
+}
+
+function extractSlotFeeBps(stateBadge: string): number | null {
+  const match = stateBadge.match(/slot\[0\]\s*fee:\s*([0-9]+(?:\.[0-9]+)?)\s*bps/i)
+  if (!match) return null
+  const value = Number(match[1])
+  return Number.isFinite(value) ? value : null
 }
 
 function DepthCard({

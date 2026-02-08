@@ -99,7 +99,7 @@ export function AmmChart({ snapshot, reserveTrail, lastEvent, theme, viewWindow,
   return (
     <svg id="curveChart" viewBox={`0 0 ${geometry.width} ${geometry.height}`} role="img" aria-label="AMM reserve curve chart">
       <defs>
-        <marker id="arrowHead" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <marker id="arrowHead" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
           <path d="M 0 0 L 10 5 L 0 10 z" fill={palette.arrowHead} />
         </marker>
       </defs>
@@ -116,7 +116,7 @@ export function AmmChart({ snapshot, reserveTrail, lastEvent, theme, viewWindow,
             x2={gx}
             y2={geometry.height - geometry.margin.bottom}
             stroke={palette.grid}
-            strokeWidth="1"
+            strokeWidth="0.7"
           />
         )
       })}
@@ -131,7 +131,7 @@ export function AmmChart({ snapshot, reserveTrail, lastEvent, theme, viewWindow,
             x2={geometry.width - geometry.margin.right}
             y2={gy}
             stroke={palette.grid}
-            strokeWidth="1"
+            strokeWidth="0.7"
           />
         )
       })}
@@ -142,7 +142,7 @@ export function AmmChart({ snapshot, reserveTrail, lastEvent, theme, viewWindow,
         x2={geometry.width - geometry.margin.right}
         y2={geometry.height - geometry.margin.bottom}
         stroke={palette.axis}
-        strokeWidth="2"
+        strokeWidth="1.2"
       />
       <line
         x1={geometry.margin.left}
@@ -150,12 +150,12 @@ export function AmmChart({ snapshot, reserveTrail, lastEvent, theme, viewWindow,
         x2={geometry.margin.left}
         y2={geometry.height - geometry.margin.bottom}
         stroke={palette.axis}
-        strokeWidth="2"
+        strokeWidth="1.2"
       />
 
-      <path d={chart.normalizerPath} fill="none" stroke={palette.normalizerCurve} strokeWidth="3" strokeDasharray="8 6" />
-      <path d={chart.strategyPath} fill="none" stroke={palette.strategyCurve} strokeWidth="4" />
-      <path d={chart.trailPath} fill="none" stroke={palette.trail} strokeWidth="1.9" strokeOpacity="0.45" />
+      <path d={chart.normalizerPath} fill="none" stroke={palette.normalizerCurve} strokeWidth="1.4" strokeDasharray="7 6" />
+      <path d={chart.strategyPath} fill="none" stroke={palette.strategyCurve} strokeWidth="2.7" />
+      <path d={chart.trailPath} fill="none" stroke={palette.trail} strokeWidth="1.15" strokeOpacity="0.42" />
 
       {chart.arrow ? (
         <line
@@ -164,53 +164,53 @@ export function AmmChart({ snapshot, reserveTrail, lastEvent, theme, viewWindow,
           x2={chart.arrow.toX}
           y2={chart.arrow.toY}
           stroke={lastEvent?.isStrategyTrade ? palette.arrowStrategy : palette.arrowOther}
-          strokeWidth="2.3"
+          strokeWidth="1.45"
           markerEnd="url(#arrowHead)"
         />
       ) : null}
 
-      <circle cx={chart.strategyPoint.x} cy={chart.strategyPoint.y} r="8" fill={palette.strategyDot} fillOpacity="0.8" />
-      <circle cx={chart.strategyPoint.x} cy={chart.strategyPoint.y} r="17" fill="none" stroke={palette.strategyRing} strokeWidth="1" />
+      <circle cx={chart.strategyPoint.x} cy={chart.strategyPoint.y} r="6.2" fill={palette.strategyDot} fillOpacity="0.8" />
+      <circle cx={chart.strategyPoint.x} cy={chart.strategyPoint.y} r="13" fill="none" stroke={palette.strategyRing} strokeWidth="0.85" />
 
       <circle
         cx={chart.normalizerPoint.x}
         cy={chart.normalizerPoint.y}
-        r="6"
+        r="4.6"
         fill={palette.normalizerDotFill}
         stroke={palette.normalizerDotStroke}
-        strokeWidth="2"
+        strokeWidth="1.25"
       />
 
-      <circle cx={chart.targetPoint.x} cy={chart.targetPoint.y} r="4" fill={palette.targetDot} fillOpacity="0.7" />
+      <circle cx={chart.targetPoint.x} cy={chart.targetPoint.y} r="2.8" fill={palette.targetDot} fillOpacity="0.62" />
 
-      <text x={geometry.width - 148} y="44" fill={palette.labelMain} fontSize="42" fontFamily="Cormorant Garamond" fontStyle="italic">
-        x . y = k
+      <text x={geometry.width - 188} y="42" fill={palette.labelMain} fontSize="28" fontFamily="Cormorant Garamond" fontStyle="italic">
+        x · y = k
       </text>
-      <text x={geometry.width - 112} y="66" fill={palette.labelSoft} fontSize="19" fontFamily="Cormorant Garamond" fontStyle="italic">
-        dy / dx
+      <text x={geometry.width - 166} y="61" fill={palette.labelSoft} fontSize="15" fontFamily="Cormorant Garamond" fontStyle="italic">
+        Δy / Δx
       </text>
 
-      <text x={geometry.width / 2 - 40} y={geometry.height - 10} fill={palette.axisLabel} fontSize="28" fontFamily="Cormorant Garamond">
+      <text x={geometry.width / 2 - 38} y={geometry.height - 12} fill={palette.axisLabel} fontSize="13" fontFamily="Cormorant Garamond">
         Reserve X
       </text>
       <text
-        x="31"
+        x="27"
         y={geometry.height / 2 + 24}
         fill={palette.axisLabel}
-        fontSize="28"
+        fontSize="13"
         fontFamily="Cormorant Garamond"
-        transform={`rotate(-90 31 ${geometry.height / 2 + 24})`}
+        transform={`rotate(-90 27 ${geometry.height / 2 + 24})`}
       >
         Reserve Y
       </text>
 
-      <text x={geometry.margin.left + 12} y={geometry.margin.top + 16} fill={palette.legendStrategy} fontSize="13" fontFamily="Space Mono">
+      <text x={geometry.margin.left + 10} y={geometry.margin.top + 14} fill={palette.legendStrategy} fontSize="10" fontFamily="Space Mono">
         strategy
       </text>
-      <text x={geometry.margin.left + 12} y={geometry.margin.top + 31} fill={palette.legendNormalizer} fontSize="13" fontFamily="Space Mono">
+      <text x={geometry.margin.left + 10} y={geometry.margin.top + 27} fill={palette.legendNormalizer} fontSize="10" fontFamily="Space Mono">
         normalizer
       </text>
-      <text x={geometry.margin.left + 12} y={geometry.margin.top + 46} fill={palette.legendTrail} fontSize="12" fontFamily="Space Mono">
+      <text x={geometry.margin.left + 10} y={geometry.margin.top + 40} fill={palette.legendTrail} fontSize="9" fontFamily="Space Mono">
         {autoZoom ? 'recent trail (auto-zoom)' : 'recent trail (fixed view)'}
       </text>
     </svg>
