@@ -43,21 +43,14 @@ html[data-theme='dark'] {
 html,
 body {
   width: 100%;
-  height: 100%;
-  min-height: 100%;
-  min-height: 100svh;
-  height: 100vh;
-  min-height: 100vh;
-  min-height: 100dvh;
   height: 100dvh;
+  min-height: 100dvh;
 }
 
 body {
   margin: 0;
-  display: flex;
-  flex-direction: column;
-  flex: 1 1 auto;
-  min-height: 100dvh;
+  height: 100%;
+  min-height: 100%;
   overflow: hidden;
   color: var(--ink);
   font-family: 'IBM Plex Sans', 'Segoe UI', sans-serif;
@@ -107,22 +100,15 @@ h3 {
 }
 
 .app-shell {
-  position: relative;
+  position: fixed;
+  inset: 0;
   z-index: 1;
-  flex: 1 1 auto;
-  display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr);
+  display: flex;
+  flex-direction: column;
   gap: 8px;
-  height: 100%;
-  min-height: 100%;
-  min-height: 100svh;
-  height: 100vh;
-  min-height: 100vh;
-  max-height: 100vh;
-  max-height: 100svh;
-  max-height: 100dvh;
-  min-height: 100dvh;
+  width: 100%;
   height: 100dvh;
+  min-height: 100dvh;
   padding: 8px 10px 10px;
   overflow: hidden;
 }
@@ -133,7 +119,6 @@ h3 {
   justify-content: space-between;
   gap: 14px;
   padding: 2px 2px 8px;
-  border-bottom: 1px solid var(--line);
 }
 
 .brand-block {
@@ -201,8 +186,8 @@ h3 {
 }
 
 .layout {
+  flex: 1 1 auto;
   min-height: 0;
-  height: 100%;
   display: flex;
   align-items: stretch;
   gap: 0;
@@ -211,6 +196,8 @@ h3 {
 
 .code-panel,
 .market-panel {
+  display: flex;
+  flex-direction: column;
   min-height: 0;
   height: 100%;
   border: none;
@@ -243,6 +230,7 @@ h3 {
   display: grid;
   align-items: stretch;
   gap: 8px;
+  width: 100%;
 }
 
 .panel-head-row {
@@ -271,7 +259,7 @@ h3 {
 
 .strategy-tabs {
   display: flex;
-  align-items: flex-end;
+  align-items: stretch;
   gap: 0;
   width: 100%;
   border-bottom: 1px solid var(--line-soft);
@@ -291,8 +279,11 @@ h3 {
   padding: 10px 12px 8px;
   min-height: 42px;
   cursor: pointer;
-  flex: 1 1 50%;
-  width: 50%;
+  flex: 1 1 0;
+}
+
+.strategy-tab:last-child {
+  border-right: none;
 }
 
 .strategy-tab.active {
@@ -337,6 +328,7 @@ h3 {
 
 .strategy-picker-wide {
   display: block;
+  width: 100%;
 }
 
 .strategy-picker-wide select {
@@ -408,13 +400,11 @@ h3 {
 }
 
 .code-panel {
-  display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr) auto;
   overflow: hidden;
 }
 
 .code-panel-custom {
-  grid-template-rows: auto auto minmax(0, 1fr);
+  display: flex;
 }
 
 .inline-diagnostics {
@@ -438,6 +428,7 @@ h3 {
 }
 
 .code-view {
+  flex: 1 1 auto;
   margin: 0;
   border-top: 1px solid var(--line-soft);
   border-bottom: 1px solid var(--line-soft);
@@ -529,6 +520,7 @@ h3 {
 }
 
 .strategy-lab {
+  flex: 0 0 auto;
   border-top: 1px solid var(--line-soft);
   margin-top: 0;
   background: var(--panel-soft);
@@ -565,6 +557,8 @@ h3 {
 }
 
 .code-panel-custom .strategy-lab {
+  flex: 1 1 auto;
+  min-height: 0;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
 }
@@ -651,8 +645,6 @@ h3 {
 }
 
 .market-panel {
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
   overflow: hidden;
 }
 
@@ -661,8 +653,8 @@ h3 {
 }
 
 .market-grid {
+  flex: 1 1 auto;
   min-height: 0;
-  height: 100%;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(240px, 310px);
   gap: 0;
@@ -671,9 +663,8 @@ h3 {
 
 .market-main {
   min-height: 0;
-  height: 100%;
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  display: flex;
+  flex-direction: column;
   gap: 0;
 }
 
@@ -745,8 +736,8 @@ h3 {
 }
 
 .chart-wrap {
+  flex: 1 1 auto;
   min-height: 0;
-  height: 100%;
   display: flex;
   padding: 6px 8px;
   border-bottom: 1px solid var(--line-soft);
@@ -769,6 +760,7 @@ h3 {
 }
 
 .market-bottom {
+  flex: 0 0 auto;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
   gap: 0;
@@ -908,7 +900,6 @@ h3 {
 
 .trade-column {
   min-height: 0;
-  height: 100%;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
   padding: 8px;
@@ -942,6 +933,10 @@ h3 {
   scrollbar-gutter: stable both-edges;
 }
 
+.trade-tape.is-empty {
+  background: transparent;
+}
+
 .trade-row {
   border: 1px solid var(--line);
   border-radius: 9px;
@@ -951,11 +946,12 @@ h3 {
 }
 
 .trade-row-empty {
-  border: 1px dashed color-mix(in srgb, var(--line) 65%, transparent);
+  border: none;
   background: transparent;
   color: color-mix(in srgb, var(--ink-soft) 75%, #9f9388);
   text-align: center;
   font-size: 0.77rem;
+  margin-top: 8px;
 }
 
 .trade-top {
@@ -1066,16 +1062,20 @@ h3 {
 
 @media (max-width: 1260px) {
   .layout {
-    display: grid;
-    grid-template-columns: 1fr;
-    grid-template-rows: minmax(280px, 42dvh) minmax(0, 1fr);
+    display: flex;
+    flex-direction: column;
   }
 
   .code-panel {
     flex: initial;
     min-width: 0;
+    min-height: min(420px, 46dvh);
     border-right: none;
     border-bottom: 1px solid var(--line-soft);
+  }
+
+  .market-panel {
+    flex: 1 1 auto;
   }
 
   .market-grid {

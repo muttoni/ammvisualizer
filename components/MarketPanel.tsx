@@ -234,7 +234,7 @@ export function MarketPanel({
             <span>{state.history.length} events</span>
           </div>
 
-          <ul id="tradeTape" className="trade-tape">
+          <ul id="tradeTape" className={`trade-tape${state.history.length === 0 ? ' is-empty' : ''}`}>
             {state.history.length === 0 ? <li className="trade-row trade-row-empty">No trades yet. Press Step or Play.</li> : null}
             {state.history.map((event) => (
               <TradeTapeRow key={event.id} event={event} />
