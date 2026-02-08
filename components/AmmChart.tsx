@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useId, useMemo, useState } from 'react'
 import { CHART_THEME } from '../lib/sim/constants'
 import {
   buildArrowPath,
@@ -19,11 +19,29 @@ interface AmmChartProps {
   theme: ThemeMode
   viewWindow: { xMin: number; xMax: number; yMin: number; yMax: number } | null
   autoZoom: boolean
+  chartSize?: { width: number; height: number }
 }
 
-export function AmmChart({ snapshot, reserveTrail, lastEvent, theme, viewWindow, autoZoom }: AmmChartProps) {
+export function AmmChart({ snapshot, reserveTrail, lastEvent, theme, viewWindow, autoZoom, chartSize }: AmmChartProps) {
   const palette = CHART_THEME[theme]
-  const geometry = DEFAULT_CHART_GEOMETRY
+  const uid = useId().replace(/:/g, '')
+  const clipId = `plotClip-${uid}`
+  const markerId = `arrowHead-${uid}`
+  const geometry = useMemo(() => {
+    const width = Math.max(320, Math.round(chartSize?.width ?? DEFAULT_CHART_GEOMETRY.width))
+    const height = Math.max(220, Math.round(chartSize?.height ?? DEFAULT_CHART_GEOMETRY.height))
+    const margin = {
+      left: Math.max(48, Math.min(72, width * 0.09)),
+      right: Math.max(14, Math.min(28, width * 0.03)),
+      top: Math.max(14, Math.min(26, height * 0.08)),
+      bottom: Math.max(42, Math.min(58, height * 0.18)),
+    }
+    return {
+      width,
+      height,
+      margin,
+    }
+  }, [chartSize?.height, chartSize?.width])
   const [frozenWindow, setFrozenWindow] = useState<ChartWindow | null>(null)
 
   const baseView = useMemo(() => {
@@ -100,12 +118,12 @@ export function AmmChart({ snapshot, reserveTrail, lastEvent, theme, viewWindow,
     <svg
       id="curveChart"
       viewBox={`0 0 ${geometry.width} ${geometry.height}`}
-      preserveAspectRatio="none"
+      preserveAspectRatio="xMidYMid meet"
       role="img"
       aria-label="AMM reserve curve chart"
     >
       <defs>
-        <clipPath id="plotClip">
+        <clipPath id={clipId}>
           <rect
             x={geometry.margin.left}
             y={geometry.margin.top}
@@ -113,7 +131,7 @@ export function AmmChart({ snapshot, reserveTrail, lastEvent, theme, viewWindow,
             height={chart.innerH}
           />
         </clipPath>
-        <marker id="arrowHead" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+        <marker id={markerId} viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
           <path d="M 0 0 L 10 5 L 0 10 z" fill={palette.arrowHead} />
         </marker>
       </defs>
@@ -167,7 +185,7 @@ export function AmmChart({ snapshot, reserveTrail, lastEvent, theme, viewWindow,
         strokeWidth="1.2"
       />
 
-      <g clipPath="url(#plotClip)">
+      <g clipPath={`url(#${clipId})`}>
         <path d={chart.normalizerPath} fill="none" stroke={palette.normalizerCurve} strokeWidth="1.4" strokeDasharray="7 6" />
         <path d={chart.strategyPath} fill="none" stroke={palette.strategyCurve} strokeWidth="2.7" />
         <path d={chart.trailPath} fill="none" stroke={palette.trail} strokeWidth="1.15" strokeOpacity="0.42" />
@@ -180,7 +198,7 @@ export function AmmChart({ snapshot, reserveTrail, lastEvent, theme, viewWindow,
             y2={chart.arrow.toY}
             stroke={lastEvent?.isStrategyTrade ? palette.arrowStrategy : palette.arrowOther}
             strokeWidth="1.45"
-            markerEnd="url(#arrowHead)"
+            markerEnd={`url(#${markerId})`}
           />
         ) : null}
 

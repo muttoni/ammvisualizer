@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useRef, useState } from 'react'
 import { SPEED_PROFILE } from '../lib/sim/constants'
 import { buildDepthStats } from '../lib/sim/math'
 import type { ThemeMode, TradeEvent, WorkerUiState } from '../lib/sim/types'
@@ -31,9 +32,32 @@ export function MarketPanel({
 }: MarketPanelProps) {
   const snapshot = state.snapshot
   const strategySpot = snapshot.strategy.y / snapshot.strategy.x
+  const chartHostRef = useRef<HTMLDivElement | null>(null)
+  const [chartSize, setChartSize] = useState({ width: 760, height: 320 })
   const latestStrategyEvent = state.history.find((event) => event.isStrategyTrade && event.trade)
   const tradeRatio = latestStrategyEvent?.trade ? latestStrategyEvent.trade.amountY / Math.max(latestStrategyEvent.trade.reserveY, 1e-9) : null
   const slotFeeBps = extractSlotFeeBps(latestStrategyEvent?.stateBadge ?? state.lastEvent.stateBadge)
+
+  useEffect(() => {
+    const host = chartHostRef.current
+    if (!host || typeof ResizeObserver === 'undefined') return
+
+    const observer = new ResizeObserver((entries) => {
+      const next = entries[0]?.contentRect
+      if (!next) return
+
+      const width = Math.max(320, Math.round(next.width))
+      const height = Math.max(220, Math.round(next.height))
+
+      setChartSize((prev) => {
+        if (prev.width === width && prev.height === height) return prev
+        return { width, height }
+      })
+    })
+
+    observer.observe(host)
+    return () => observer.disconnect()
+  }, [])
 
   const strategyDepth = buildDepthStats({
     name: 'Strategy',
@@ -116,14 +140,17 @@ export function MarketPanel({
           </div>
 
           <div className="chart-wrap terminal-surface">
-            <AmmChart
-              snapshot={snapshot}
-              reserveTrail={state.reserveTrail}
-              lastEvent={state.lastEvent}
-              theme={theme}
-              viewWindow={state.viewWindow}
-              autoZoom={autoZoom}
-            />
+            <div ref={chartHostRef} className="chart-host">
+              <AmmChart
+                snapshot={snapshot}
+                reserveTrail={state.reserveTrail}
+                lastEvent={state.lastEvent}
+                theme={theme}
+                viewWindow={state.viewWindow}
+                autoZoom={autoZoom}
+                chartSize={chartSize}
+              />
+            </div>
           </div>
 
           <div className="market-bottom">

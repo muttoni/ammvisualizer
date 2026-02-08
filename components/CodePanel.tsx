@@ -17,7 +17,6 @@ interface CodePanelProps {
   onSelectStrategy: (strategy: StrategyRef) => void
   onToggleExplanationOverlay: () => void
   onCompileAndActivateCustom: (payload: { id?: string; name: string; source: string }) => void
-  onDeleteCustom: (id: string) => void
 }
 
 type StrategyTab = 'builtin' | 'custom'
@@ -38,6 +37,18 @@ contract Strategy {
 }
 `
 
+function encodeStrategyRef(strategy: StrategyRef): string {
+  return `${strategy.kind}:${strategy.id}`
+}
+
+function decodeStrategyRef(value: string): StrategyRef {
+  const [kind, ...idParts] = value.split(':')
+  return {
+    kind: kind === 'custom' ? 'custom' : 'builtin',
+    id: idParts.join(':'),
+  }
+}
+
 export function CodePanel({
   availableStrategies,
   selectedStrategy,
@@ -51,10 +62,9 @@ export function CodePanel({
   onSelectStrategy,
   onToggleExplanationOverlay,
   onCompileAndActivateCustom,
-  onDeleteCustom,
 }: CodePanelProps) {
   const containerRef = useRef<HTMLDivElement | null>(null)
-  const [activeTab, setActiveTab] = useState<StrategyTab>(selectedStrategy.kind === 'custom' ? 'custom' : 'builtin')
+  const [activeTab, setActiveTab] = useState<StrategyTab>('builtin')
   const [draftId, setDraftId] = useState<string | undefined>(undefined)
   const [draftName, setDraftName] = useState('My Strategy')
   const [draftSource, setDraftSource] = useState(DEFAULT_SOURCE)
@@ -64,18 +74,17 @@ export function CodePanel({
   const lines = useMemo(() => code.replace(/\t/g, '    ').split('\n'), [code])
 
   const builtinOptions = useMemo(() => availableStrategies.filter((item) => item.kind === 'builtin'), [availableStrategies])
+  const customOptions = useMemo(() => availableStrategies.filter((item) => item.kind === 'custom'), [availableStrategies])
 
-  const activeBuiltinId = useMemo(() => {
-    if (selectedStrategy.kind === 'builtin' && builtinOptions.some((option) => option.id === selectedStrategy.id)) {
-      return selectedStrategy.id
+  const selectedAvailableValue = useMemo(() => {
+    const encoded = encodeStrategyRef(selectedStrategy)
+    if (availableStrategies.some((item) => `${item.kind}:${item.id}` === encoded)) {
+      return encoded
     }
 
-    return builtinOptions[0]?.id ?? ''
-  }, [builtinOptions, selectedStrategy])
-
-  useEffect(() => {
-    setActiveTab(selectedStrategy.kind === 'custom' ? 'custom' : 'builtin')
-  }, [selectedStrategy.kind])
+    const fallback = builtinOptions[0]
+    return fallback ? `${fallback.kind}:${fallback.id}` : ''
+  }, [availableStrategies, builtinOptions, selectedStrategy])
 
   useEffect(() => {
     if (!containerRef.current || firstHighlightedLine === null) return
@@ -97,30 +106,10 @@ export function CodePanel({
   }, [library, selectedStrategy.id, selectedStrategy.kind])
 
   useEffect(() => {
-    if (!draftId) return
-    if (library.some((item) => item.id === draftId)) return
-
-    if (library.length === 0) {
-      setDraftId(undefined)
-      setDraftName('My Strategy')
-      setDraftSource(DEFAULT_SOURCE)
-      return
+    if (compileResult?.ok) {
+      setActiveTab('builtin')
     }
-
-    const fallback = library[0]
-    setDraftId(fallback.id)
-    setDraftName(fallback.name)
-    setDraftSource(fallback.source)
-  }, [draftId, library])
-
-  useEffect(() => {
-    if (activeTab !== 'custom' || draftId || library.length === 0) return
-
-    const fallback = library[0]
-    setDraftId(fallback.id)
-    setDraftName(fallback.name)
-    setDraftSource(fallback.source)
-  }, [activeTab, draftId, library])
+  }, [compileResult?.ok, compileResult?.strategyId])
 
   return (
     <section className="code-panel reveal delay-1">
@@ -142,7 +131,7 @@ export function CodePanel({
             className={`strategy-tab ${activeTab === 'builtin' ? 'active' : ''}`}
             onClick={() => setActiveTab('builtin')}
           >
-            Built-in
+            Available Strategies
           </button>
           <button
             type="button"
@@ -151,30 +140,41 @@ export function CodePanel({
             className={`strategy-tab ${activeTab === 'custom' ? 'active' : ''}`}
             onClick={() => setActiveTab('custom')}
           >
-            Custom
+            Custom Editor
           </button>
         </div>
 
         {activeTab === 'builtin' ? (
-          <label className="strategy-picker" htmlFor="builtinStrategySelect">
-            <span>Built-in</span>
+          <label className="strategy-picker" htmlFor="availableStrategySelect">
+            <span>Available</span>
             <div className="strategy-picker-controls single-control">
               <select
-                id="builtinStrategySelect"
-                value={activeBuiltinId}
-                onChange={(event) => onSelectStrategy({ kind: 'builtin', id: event.target.value })}
+                id="availableStrategySelect"
+                value={selectedAvailableValue}
+                onChange={(event) => onSelectStrategy(decodeStrategyRef(event.target.value))}
               >
-                {builtinOptions.map((option) => (
-                  <option key={`${option.kind}-${option.id}`} value={option.id}>
-                    {option.name}
-                  </option>
-                ))}
+                <optgroup label="Built-in">
+                  {builtinOptions.map((option) => (
+                    <option key={`${option.kind}-${option.id}`} value={`${option.kind}:${option.id}`}>
+                      {option.name}
+                    </option>
+                  ))}
+                </optgroup>
+                {customOptions.length > 0 ? (
+                  <optgroup label="Custom">
+                    {customOptions.map((option) => (
+                      <option key={`${option.kind}-${option.id}`} value={`${option.kind}:${option.id}`}>
+                        {option.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                ) : null}
               </select>
             </div>
           </label>
         ) : (
           <p className="custom-runtime-note">
-            Custom runtime loads only after you click <strong>Compile &amp; Run</strong>.
+            Use this pane only for editing. Compile will save locally and add it to <strong>Available strategies</strong>.
           </p>
         )}
       </div>
@@ -220,43 +220,11 @@ export function CodePanel({
 
       <section className={`strategy-lab ${activeTab === 'custom' ? 'open' : 'closed'}`}>
         <div className="strategy-lab-head">
-          <h3>Custom Strategy Lab</h3>
+          <h3>Custom Strategy Editor</h3>
           <span>{library.length} saved</span>
         </div>
 
         <div className="strategy-lab-body">
-          <label className="strategy-picker" htmlFor="savedCustomSelect">
-            <span>Saved</span>
-            <div className="strategy-picker-controls single-control">
-              <select
-                id="savedCustomSelect"
-                value={draftId ?? ''}
-                onChange={(event) => {
-                  if (!event.target.value) {
-                    setDraftId(undefined)
-                    setDraftName('My Strategy')
-                    setDraftSource(DEFAULT_SOURCE)
-                    return
-                  }
-
-                  const item = library.find((entry) => entry.id === event.target.value)
-                  if (!item) return
-
-                  setDraftId(item.id)
-                  setDraftName(item.name)
-                  setDraftSource(item.source)
-                }}
-              >
-                <option value="">New Draft</option>
-                {library.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </label>
-
           <label className="editor-field" htmlFor="strategyNameInput">
             <span>Name</span>
             <input
@@ -288,7 +256,7 @@ export function CodePanel({
               }}
               disabled={draftSource.trim().length === 0}
             >
-              Compile &amp; Run
+              Compile &amp; Save
             </button>
             <button
               type="button"
@@ -304,7 +272,7 @@ export function CodePanel({
 
           {compileResult ? (
             <div className={`compile-status ${compileResult.ok ? 'ok' : 'error'}`}>
-              <strong>{compileResult.ok ? 'Compile succeeded and simulation switched to custom runtime.' : 'Compile failed'}</strong>
+              <strong>{compileResult.ok ? 'Compiled and added to Available strategies.' : 'Compile failed'}</strong>
               {compileResult.diagnostics.length > 0 ? (
                 <ul>
                   {compileResult.diagnostics.slice(0, 4).map((diagnostic, index) => (
@@ -317,33 +285,6 @@ export function CodePanel({
               ) : null}
             </div>
           ) : null}
-
-          <div className="library-list">
-            {library.length === 0 ? <p>No saved custom strategies yet.</p> : null}
-            {library.map((item) => (
-              <article key={item.id} className="library-item">
-                <header>
-                  <strong>{item.name}</strong>
-                  <span>{new Date(item.updatedAt).toLocaleString()}</span>
-                </header>
-                <div className="library-actions">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setDraftId(item.id)
-                      setDraftName(item.name)
-                      setDraftSource(item.source)
-                    }}
-                  >
-                    Load
-                  </button>
-                  <button type="button" onClick={() => onDeleteCustom(item.id)}>
-                    Delete
-                  </button>
-                </div>
-              </article>
-            ))}
-          </div>
         </div>
       </section>
     </section>

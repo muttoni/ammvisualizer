@@ -92,8 +92,9 @@ export function getChartViewWindow(
 
   const xPad = (rawXMax - rawXMin) * 0.15
   const yPad = (rawYMax - rawYMin) * 0.2
+  const minObservedX = Math.min(...xVals)
 
-  const xMin = Math.max(1, rawXMin - xPad)
+  const xMin = Math.max(1, minObservedX * 0.62, rawXMin - xPad)
   const xMax = rawXMax + xPad
 
   // Include curve-edge values in Y bounds so the rendered curve stays inside the plot box.
@@ -117,7 +118,7 @@ export function getChartViewWindow(
   }
 
   if (previousWindow) {
-    const alpha = 0.36
+    const alpha = 0.44
     nextWindow = {
       xMin: lerp(previousWindow.xMin, nextWindow.xMin, alpha),
       xMax: lerp(previousWindow.xMax, nextWindow.xMax, alpha),

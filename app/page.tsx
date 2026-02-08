@@ -106,7 +106,6 @@ export default function Page() {
               setCustomRuntimeEnabled(true)
               controls.compileAndActivateCustom(payload)
             }}
-            onDeleteCustom={controls.deleteCustom}
           />
 
           <MarketPanel
