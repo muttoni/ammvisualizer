@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import { SPEED_PROFILE } from '../lib/sim/constants'
 import { buildDepthStats } from '../lib/sim/math'
 import type { ThemeMode, TradeEvent, WorkerUiState } from '../lib/sim/types'
@@ -38,9 +38,19 @@ export function MarketPanel({
   const tradeRatio = latestStrategyEvent?.trade ? latestStrategyEvent.trade.amountY / Math.max(latestStrategyEvent.trade.reserveY, 1e-9) : null
   const slotFeeBps = extractSlotFeeBps(latestStrategyEvent?.stateBadge ?? state.lastEvent.stateBadge)
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const host = chartHostRef.current
     if (!host || typeof ResizeObserver === 'undefined') return
+
+    const measure = () => {
+      const rect = host.getBoundingClientRect()
+      const width = Math.max(320, Math.round(rect.width))
+      const height = Math.max(220, Math.round(rect.height))
+      setChartSize((prev) => {
+        if (prev.width === width && prev.height === height) return prev
+        return { width, height }
+      })
+    }
 
     const observer = new ResizeObserver((entries) => {
       const next = entries[0]?.contentRect
@@ -55,6 +65,7 @@ export function MarketPanel({
       })
     })
 
+    measure()
     observer.observe(host)
     return () => observer.disconnect()
   }, [])
