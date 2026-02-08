@@ -193,7 +193,7 @@ h3 {
 
 .code-panel {
   display: grid;
-  grid-template-rows: auto 1fr auto;
+  grid-template-rows: auto minmax(300px, 1fr) auto;
   overflow: hidden;
 }
 
@@ -234,13 +234,24 @@ h3 {
 
 .explain-box {
   border-top: 1px solid var(--line-soft);
-  padding: 13px 15px 15px;
-  background: rgba(255, 250, 245, 0.9);
+  padding: 16px 18px 18px;
+  background: rgba(255, 248, 240, 0.98);
+  min-height: 155px;
+  display: grid;
+  align-content: center;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+}
+
+.explain-box h3 {
+  font-size: 1.4rem;
+  color: #6a3e22;
 }
 
 .explain-box p {
-  margin-top: 7px;
-  font-size: 1.02rem;
+  margin-top: 8px;
+  font-size: 1.22rem;
+  line-height: 1.3;
+  color: #4d2d18;
 }
 
 .market-panel {
@@ -291,6 +302,9 @@ h3 {
 .trade-section {
   border-top: 1px solid var(--line-soft);
   padding: 10px 14px 15px;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  min-height: 0;
 }
 
 .trade-tape {
@@ -299,7 +313,8 @@ h3 {
   margin: 10px 0 0;
   display: grid;
   gap: 8px;
-  max-height: min(52vh, 430px);
+  height: 235px;
+  max-height: 235px;
   overflow: auto;
 }
 
@@ -457,6 +472,11 @@ h3 {
   .code-view {
     max-height: 420px;
   }
+
+  .trade-tape {
+    height: 220px;
+    max-height: 220px;
+  }
 }
 
 @media (max-width: 700px) {
@@ -488,5 +508,18 @@ h3 {
     flex-direction: column;
     align-items: flex-start;
     padding-bottom: 2px;
+  }
+
+  .explain-box {
+    min-height: 135px;
+  }
+
+  .explain-box p {
+    font-size: 1.08rem;
+  }
+
+  .trade-tape {
+    height: 190px;
+    max-height: 190px;
   }
 }
