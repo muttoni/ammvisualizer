@@ -7,6 +7,51 @@ const SPEED_PROFILE = {
   6: { label: "3.2x", ms: 240 },
 };
 
+const CHART_THEME = {
+  light: {
+    grid: "#ddd1c4",
+    axis: "#c3b3a5",
+    strategyCurve: "#7f421d",
+    normalizerCurve: "#d2b8a4",
+    trail: "#9f663f",
+    strategyDot: "#8a4a22",
+    strategyRing: "#c9a58d",
+    normalizerDotFill: "#e8d3c2",
+    normalizerDotStroke: "#bf9f8a",
+    targetDot: "#6f7e96",
+    arrowStrategy: "#8b4a23",
+    arrowOther: "#b6957e",
+    arrowHead: "#9a6d50",
+    labelMain: "#b48f76",
+    labelSoft: "#c3a791",
+    axisLabel: "#aa8d74",
+    legendStrategy: "#8b4a23",
+    legendNormalizer: "#b6957e",
+    legendTrail: "#9f663f",
+  },
+  dark: {
+    grid: "#34404d",
+    axis: "#526173",
+    strategyCurve: "#e9a46d",
+    normalizerCurve: "#8ca2b8",
+    trail: "#f2c79f",
+    strategyDot: "#ffb577",
+    strategyRing: "#e2ae83",
+    normalizerDotFill: "#7f93a8",
+    normalizerDotStroke: "#b3c5d6",
+    targetDot: "#7fd1ff",
+    arrowStrategy: "#ffbf88",
+    arrowOther: "#a9bed3",
+    arrowHead: "#f0c499",
+    labelMain: "#d0c0b4",
+    labelSoft: "#9eb2c5",
+    axisLabel: "#b9c8d8",
+    legendStrategy: "#ffbf88",
+    legendNormalizer: "#adc3d8",
+    legendTrail: "#f1c8a5",
+  },
+};
+
 const STRATEGIES = {
   baseline30: {
     name: "Baseline 30 bps",
@@ -213,6 +258,7 @@ document.addEventListener("DOMContentLoaded", init);
 
 function init() {
   cacheDom();
+  initTheme();
   setupStrategySelect();
   wireEvents();
   updateSpeedLabel();
@@ -226,6 +272,7 @@ function cacheDom() {
   DOM.playBtn = document.getElementById("playBtn");
   DOM.stepBtn = document.getElementById("stepBtn");
   DOM.resetBtn = document.getElementById("resetBtn");
+  DOM.themeToggleBtn = document.getElementById("themeToggleBtn");
   DOM.codeView = document.getElementById("codeView");
   DOM.codeExplanation = document.getElementById("codeExplanation");
   DOM.strategyStateBadge = document.getElementById("strategyStateBadge");
@@ -235,7 +282,31 @@ function cacheDom() {
   DOM.strategySpotMetric = document.getElementById("strategySpotMetric");
   DOM.feesMetric = document.getElementById("feesMetric");
   DOM.edgeMetric = document.getElementById("edgeMetric");
+  DOM.depthView = document.getElementById("depthView");
+  DOM.depthLegend = document.getElementById("depthLegend");
   DOM.tradeTape = document.getElementById("tradeTape");
+}
+
+function initTheme() {
+  const storedTheme = localStorage.getItem("ammvisualizer-theme");
+  const systemPrefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+  const preferredTheme = storedTheme || (systemPrefersDark ? "dark" : "light");
+  applyTheme(preferredTheme, false);
+}
+
+function applyTheme(theme, persist = true) {
+  const normalized = theme === "dark" ? "dark" : "light";
+  document.documentElement.setAttribute("data-theme", normalized);
+
+  if (DOM.themeToggleBtn) {
+    const nextLabel = normalized === "dark" ? "Light Mode" : "Dark Mode";
+    DOM.themeToggleBtn.textContent = nextLabel;
+    DOM.themeToggleBtn.setAttribute("aria-label", `Switch to ${nextLabel.toLowerCase()}`);
+  }
+
+  if (persist) {
+    localStorage.setItem("ammvisualizer-theme", normalized);
+  }
 }
 
 function setupStrategySelect() {
@@ -277,6 +348,12 @@ function wireEvents() {
       stopPlayback();
       startPlayback();
     }
+  });
+
+  DOM.themeToggleBtn.addEventListener("click", () => {
+    const current = document.documentElement.getAttribute("data-theme") || "light";
+    applyTheme(current === "dark" ? "light" : "dark");
+    renderAll();
   });
 }
 
@@ -564,6 +641,53 @@ function ammK(amm) {
   return amm.reserveX * amm.reserveY;
 }
 
+function depthToBuyImpact(amm, impact) {
+  if (impact <= 0) return 0;
+  const k = ammK(amm);
+  const spot = amm.reserveY / Math.max(amm.reserveX, 1e-9);
+  const targetSpot = spot * (1 + impact);
+  const targetX = Math.sqrt(k / Math.max(targetSpot, 1e-9));
+  const amountXOut = amm.reserveX - targetX;
+  return clamp(amountXOut, 0, Math.max(0, amm.reserveX * 0.99));
+}
+
+function depthToSellImpact(amm, impact) {
+  if (impact <= 0 || impact >= 1) return 0;
+  const gamma = 1 - amm.bidFeeBps / 10000;
+  if (gamma <= 0) return 0;
+  const k = ammK(amm);
+  const spot = amm.reserveY / Math.max(amm.reserveX, 1e-9);
+  const targetSpot = spot * (1 - impact);
+  const targetX = Math.sqrt(k / Math.max(targetSpot, 1e-9));
+  const netXIn = targetX - amm.reserveX;
+  const grossXIn = netXIn / gamma;
+  return Math.max(0, grossXIn);
+}
+
+function quoteYInForBuyingX(amm, amountXOut) {
+  if (amountXOut <= 0 || amountXOut >= amm.reserveX) return 0;
+  const gamma = 1 - amm.askFeeBps / 10000;
+  if (gamma <= 0) return 0;
+  const k = ammK(amm);
+  const newX = amm.reserveX - amountXOut;
+  const netYIn = k / newX - amm.reserveY;
+  if (!Number.isFinite(netYIn) || netYIn <= 0) return 0;
+  return netYIn / gamma;
+}
+
+function quoteYOutForSellingX(amm, amountXIn) {
+  if (amountXIn <= 0) return 0;
+  const gamma = 1 - amm.bidFeeBps / 10000;
+  if (gamma <= 0) return 0;
+  const k = ammK(amm);
+  const netXIn = amountXIn * gamma;
+  const newX = amm.reserveX + netXIn;
+  const newY = k / newX;
+  const amountYOut = amm.reserveY - newY;
+  if (!Number.isFinite(amountYOut) || amountYOut <= 0) return 0;
+  return amountYOut;
+}
+
 function executeBuyX(amm, amountXIn, timestamp) {
   if (amountXIn <= 0) return null;
 
@@ -806,6 +930,7 @@ function renderAll() {
   renderClock(snapshot);
   renderMetrics(snapshot);
   renderChart(snapshot, SIM.lastEvent);
+  renderDepthView(snapshot);
   renderTradeTape();
 }
 
@@ -828,6 +953,76 @@ function renderMetrics(snapshot) {
   const retail = snapshot.edge.retail;
   const arb = snapshot.edge.arb;
   DOM.edgeMetric.textContent = `${formatSigned(total)} (retail ${formatSigned(retail)}, arb ${formatSigned(arb)})`;
+}
+
+function renderDepthView(snapshot) {
+  const pools = [
+    { label: "Strategy", key: "strategy", amm: SIM.strategyAmm, feeLabel: `${snapshot.strategy.bid}/${snapshot.strategy.ask} bps` },
+    { label: "Normalizer", key: "normalizer", amm: SIM.normalizerAmm, feeLabel: `${snapshot.normalizer.bid}/${snapshot.normalizer.ask} bps` },
+  ];
+
+  const depthStats = pools.map((pool) => ({
+    ...pool,
+    ...buildDepthStats(pool.amm),
+  }));
+
+  const maxBuy5 = Math.max(...depthStats.map((item) => item.buyDepth5), 1e-9);
+  const maxSell5 = Math.max(...depthStats.map((item) => item.sellDepth5), 1e-9);
+
+  const cards = depthStats.map((item) => {
+    const buyWidth = clamp((item.buyDepth5 / maxBuy5) * 100, 3, 100);
+    const sellWidth = clamp((item.sellDepth5 / maxSell5) * 100, 3, 100);
+
+    return `
+      <article class="depth-card depth-card-${item.key}">
+        <div class="depth-title-row">
+          <h4>${item.label}</h4>
+          <span class="depth-fees">${item.feeLabel}</span>
+        </div>
+
+        <div class="depth-stat-row">
+          <span>Buy-side depth (+1% / +5%)</span>
+          <strong>${formatNum(item.buyDepth1, 3)} X / ${formatNum(item.buyDepth5, 3)} X</strong>
+        </div>
+        <div class="depth-bar-track">
+          <div class="depth-bar depth-bar-buy depth-bar-${item.key}" style="width:${buyWidth.toFixed(1)}%"></div>
+        </div>
+
+        <div class="depth-stat-row">
+          <span>Sell-side depth (-1% / -5%)</span>
+          <strong>${formatNum(item.sellDepth1, 3)} X / ${formatNum(item.sellDepth5, 3)} X</strong>
+        </div>
+        <div class="depth-bar-track">
+          <div class="depth-bar depth-bar-sell depth-bar-${item.key}" style="width:${sellWidth.toFixed(1)}%"></div>
+        </div>
+
+        <div class="depth-micro">
+          <span>Cost to buy 1 X: ${formatNum(item.buyOneXCostY, 3)} Y</span>
+          <span>Payout for sell 1 X: ${formatNum(item.sellOneXPayoutY, 3)} Y</span>
+        </div>
+      </article>
+    `;
+  });
+
+  DOM.depthView.innerHTML = cards.join("");
+}
+
+function buildDepthStats(amm) {
+  const buyDepth1 = depthToBuyImpact(amm, 0.01);
+  const buyDepth5 = depthToBuyImpact(amm, 0.05);
+  const sellDepth1 = depthToSellImpact(amm, 0.01);
+  const sellDepth5 = depthToSellImpact(amm, 0.05);
+  const buyOneXCostY = quoteYInForBuyingX(amm, 1);
+  const sellOneXPayoutY = quoteYOutForSellingX(amm, 1);
+
+  return {
+    buyDepth1,
+    buyDepth5,
+    sellDepth1,
+    sellDepth5,
+    buyOneXCostY,
+    sellOneXPayoutY,
+  };
 }
 
 function renderTradeTape() {
@@ -864,6 +1059,8 @@ function renderTradeTape() {
 }
 
 function renderChart(snapshot, event) {
+  const themeKey = document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light";
+  const palette = CHART_THEME[themeKey];
   const width = 760;
   const height = 320;
   const margin = { left: 64, right: 20, top: 18, bottom: 44 };
@@ -885,11 +1082,11 @@ function renderChart(snapshot, event) {
   let grid = "";
   for (let i = 0; i <= 6; i += 1) {
     const gx = margin.left + (innerW * i) / 6;
-    grid += `<line x1="${gx.toFixed(2)}" y1="${margin.top}" x2="${gx.toFixed(2)}" y2="${(height - margin.bottom).toFixed(2)}" stroke="#ddd1c4" stroke-width="1" />`;
+    grid += `<line x1="${gx.toFixed(2)}" y1="${margin.top}" x2="${gx.toFixed(2)}" y2="${(height - margin.bottom).toFixed(2)}" stroke="${palette.grid}" stroke-width="1" />`;
   }
   for (let j = 0; j <= 6; j += 1) {
     const gy = margin.top + (innerH * j) / 6;
-    grid += `<line x1="${margin.left}" y1="${gy.toFixed(2)}" x2="${(width - margin.right).toFixed(2)}" y2="${gy.toFixed(2)}" stroke="#ddd1c4" stroke-width="1" />`;
+    grid += `<line x1="${margin.left}" y1="${gy.toFixed(2)}" x2="${(width - margin.right).toFixed(2)}" y2="${gy.toFixed(2)}" stroke="${palette.grid}" stroke-width="1" />`;
   }
 
   const strategyPath = buildCurvePath(snapshot.strategy.k, xMin, xMax, xToPx, yToPx);
@@ -909,44 +1106,44 @@ function renderChart(snapshot, event) {
     const by = yToPx(event.trade.beforeY);
     const ax = xToPx(event.trade.reserveX);
     const ay = yToPx(event.trade.reserveY);
-    const stroke = event.isStrategyTrade ? "#8b4a23" : "#b6957e";
+    const stroke = event.isStrategyTrade ? palette.arrowStrategy : palette.arrowOther;
     arrow = `<line x1="${bx.toFixed(2)}" y1="${by.toFixed(2)}" x2="${ax.toFixed(2)}" y2="${ay.toFixed(2)}" stroke="${stroke}" stroke-width="2.3" marker-end="url(#arrowHead)" />`;
   }
 
   DOM.curveChart.innerHTML = `
     <defs>
       <marker id="arrowHead" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-        <path d="M 0 0 L 10 5 L 0 10 z" fill="#9a6d50" />
+        <path d="M 0 0 L 10 5 L 0 10 z" fill="${palette.arrowHead}" />
       </marker>
     </defs>
 
     <rect x="0" y="0" width="${width}" height="${height}" fill="transparent"></rect>
     ${grid}
 
-    <line x1="${margin.left}" y1="${height - margin.bottom}" x2="${width - margin.right}" y2="${height - margin.bottom}" stroke="#c3b3a5" stroke-width="2" />
-    <line x1="${margin.left}" y1="${margin.top}" x2="${margin.left}" y2="${height - margin.bottom}" stroke="#c3b3a5" stroke-width="2" />
+    <line x1="${margin.left}" y1="${height - margin.bottom}" x2="${width - margin.right}" y2="${height - margin.bottom}" stroke="${palette.axis}" stroke-width="2" />
+    <line x1="${margin.left}" y1="${margin.top}" x2="${margin.left}" y2="${height - margin.bottom}" stroke="${palette.axis}" stroke-width="2" />
 
-    <path d="${normalizerPath}" fill="none" stroke="#d2b8a4" stroke-width="3" stroke-dasharray="8 6" />
-    <path d="${strategyPath}" fill="none" stroke="#7f421d" stroke-width="4" />
-    <path d="${trailPath}" fill="none" stroke="#9f663f" stroke-width="1.9" stroke-opacity="0.45" />
+    <path d="${normalizerPath}" fill="none" stroke="${palette.normalizerCurve}" stroke-width="3" stroke-dasharray="8 6" />
+    <path d="${strategyPath}" fill="none" stroke="${palette.strategyCurve}" stroke-width="4" />
+    <path d="${trailPath}" fill="none" stroke="${palette.trail}" stroke-width="1.9" stroke-opacity="0.45" />
 
     ${arrow}
 
-    <circle cx="${sx.toFixed(2)}" cy="${sy.toFixed(2)}" r="8" fill="#8a4a22" fill-opacity="0.8" />
-    <circle cx="${sx.toFixed(2)}" cy="${sy.toFixed(2)}" r="17" fill="none" stroke="#c9a58d" stroke-width="1" />
-    <circle cx="${nx.toFixed(2)}" cy="${ny.toFixed(2)}" r="6" fill="#e8d3c2" stroke="#bf9f8a" stroke-width="2" />
+    <circle cx="${sx.toFixed(2)}" cy="${sy.toFixed(2)}" r="8" fill="${palette.strategyDot}" fill-opacity="0.8" />
+    <circle cx="${sx.toFixed(2)}" cy="${sy.toFixed(2)}" r="17" fill="none" stroke="${palette.strategyRing}" stroke-width="1" />
+    <circle cx="${nx.toFixed(2)}" cy="${ny.toFixed(2)}" r="6" fill="${palette.normalizerDotFill}" stroke="${palette.normalizerDotStroke}" stroke-width="2" />
 
-    <circle cx="${tx.toFixed(2)}" cy="${ty.toFixed(2)}" r="4" fill="#6f7e96" fill-opacity="0.7" />
+    <circle cx="${tx.toFixed(2)}" cy="${ty.toFixed(2)}" r="4" fill="${palette.targetDot}" fill-opacity="0.7" />
 
-    <text x="${(width - 148).toFixed(2)}" y="44" fill="#b48f76" font-size="42" font-family="Cormorant Garamond" font-style="italic">x . y = k</text>
-    <text x="${(width - 112).toFixed(2)}" y="66" fill="#c3a791" font-size="19" font-family="Cormorant Garamond" font-style="italic">dy / dx</text>
+    <text x="${(width - 148).toFixed(2)}" y="44" fill="${palette.labelMain}" font-size="42" font-family="Cormorant Garamond" font-style="italic">x . y = k</text>
+    <text x="${(width - 112).toFixed(2)}" y="66" fill="${palette.labelSoft}" font-size="19" font-family="Cormorant Garamond" font-style="italic">dy / dx</text>
 
-    <text x="${(width / 2 - 40).toFixed(2)}" y="${(height - 10).toFixed(2)}" fill="#aa8d74" font-size="28" font-family="Cormorant Garamond">Reserve X</text>
-    <text x="31" y="${(height / 2 + 24).toFixed(2)}" fill="#aa8d74" font-size="28" font-family="Cormorant Garamond" transform="rotate(-90 31 ${height / 2 + 24})">Reserve Y</text>
+    <text x="${(width / 2 - 40).toFixed(2)}" y="${(height - 10).toFixed(2)}" fill="${palette.axisLabel}" font-size="28" font-family="Cormorant Garamond">Reserve X</text>
+    <text x="31" y="${(height / 2 + 24).toFixed(2)}" fill="${palette.axisLabel}" font-size="28" font-family="Cormorant Garamond" transform="rotate(-90 31 ${height / 2 + 24})">Reserve Y</text>
 
-    <text x="${(margin.left + 12).toFixed(2)}" y="${(margin.top + 16).toFixed(2)}" fill="#8b4a23" font-size="13" font-family="Space Mono">strategy</text>
-    <text x="${(margin.left + 12).toFixed(2)}" y="${(margin.top + 31).toFixed(2)}" fill="#b6957e" font-size="13" font-family="Space Mono">normalizer</text>
-    <text x="${(margin.left + 12).toFixed(2)}" y="${(margin.top + 46).toFixed(2)}" fill="#9f663f" font-size="12" font-family="Space Mono">recent trail (auto-zoom)</text>
+    <text x="${(margin.left + 12).toFixed(2)}" y="${(margin.top + 16).toFixed(2)}" fill="${palette.legendStrategy}" font-size="13" font-family="Space Mono">strategy</text>
+    <text x="${(margin.left + 12).toFixed(2)}" y="${(margin.top + 31).toFixed(2)}" fill="${palette.legendNormalizer}" font-size="13" font-family="Space Mono">normalizer</text>
+    <text x="${(margin.left + 12).toFixed(2)}" y="${(margin.top + 46).toFixed(2)}" fill="${palette.legendTrail}" font-size="12" font-family="Space Mono">recent trail (auto-zoom)</text>
   `;
 }
 

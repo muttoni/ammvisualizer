@@ -34,6 +34,10 @@
           <button id="stepBtn" type="button">Step</button>
           <button id="resetBtn" type="button">Reset</button>
         </div>
+
+        <button id="themeToggleBtn" class="theme-toggle" type="button" aria-label="Toggle dark mode">
+          Dark Mode
+        </button>
       </div>
     </header>
 
@@ -79,6 +83,14 @@
             <span>Cumulative Edge</span>
             <strong id="edgeMetric">-</strong>
           </div>
+        </div>
+
+        <div class="depth-section">
+          <div class="depth-head">
+            <h3>Per-Pool Depth</h3>
+            <span id="depthLegend" class="depth-legend">to 1% and 5% price impact</span>
+          </div>
+          <div id="depthView" class="depth-view"></div>
         </div>
 
         <div class="trade-section">
