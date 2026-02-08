@@ -1,4 +1,3 @@
-import solc from 'solc'
 import { Common, Hardfork, Mainnet } from '@ethereumjs/common'
 import { createVM } from '@ethereumjs/vm'
 import {
@@ -23,6 +22,14 @@ const BPS_WAD = 100_000_000_000_000n
 
 const AFTER_INITIALIZE_SELECTOR = '837aef47'
 const AFTER_SWAP_SELECTOR = 'c2babb57'
+const SOLJSON_PUBLIC_PATH = '/solc/soljson.js'
+
+interface SolcCompilerLike {
+  compile: (input: string) => string
+  version: () => string
+}
+
+let compilerPromise: Promise<SolcCompilerLike> | null = null
 
 interface SolcOutputContract {
   abi: Array<{ type: string; name?: string; inputs?: Array<{ type: string }>; outputs?: Array<{ type: string }> }>
@@ -64,7 +71,9 @@ export interface CustomStrategyRuntime {
   onSwap: (ctx: StrategyCallbackContext) => Promise<RuntimeStrategyResult>
 }
 
-export function compileCustomStrategySource(source: string, nameHint?: string): CompiledCustomStrategy {
+export async function compileCustomStrategySource(source: string, nameHint?: string): Promise<CompiledCustomStrategy> {
+  const compiler = await getSolcCompiler()
+
   const compileInput = {
     language: 'Solidity',
     sources: {
@@ -85,7 +94,7 @@ export function compileCustomStrategySource(source: string, nameHint?: string): 
     },
   }
 
-  const output: SolcOutput = JSON.parse(solc.compile(JSON.stringify(compileInput)))
+  const output: SolcOutput = JSON.parse(compiler.compile(JSON.stringify(compileInput)))
   const diagnostics = mapDiagnostics(output.errors)
 
   const contract = pickStrategyContract(output)
@@ -109,7 +118,7 @@ export function compileCustomStrategySource(source: string, nameHint?: string): 
     id: `custom-${hashSource(source)}`,
     name: strategyName,
     source,
-    compilerVersion: solc.version(),
+    compilerVersion: compiler.version(),
     diagnostics,
     runtimeBytecode,
     afterSwapLine: findFunctionLine(source, 'afterSwap'),
@@ -206,6 +215,81 @@ export function toLibraryItem(compiled: CompiledCustomStrategy, base?: Partial<S
     lastCompileStatus: compiled.diagnostics.some((item) => item.severity === 'error') ? 'error' : 'ok',
     lastDiagnostics: compiled.diagnostics,
   }
+}
+
+async function getSolcCompiler(): Promise<SolcCompilerLike> {
+  if (!compilerPromise) {
+    compilerPromise = isNodeRuntime() ? createNodeCompiler() : createBrowserWorkerCompiler()
+  }
+
+  return compilerPromise
+}
+
+async function createNodeCompiler(): Promise<SolcCompilerLike> {
+  const solcModule = await import('solc')
+  const candidate = (solcModule.default ?? solcModule) as Partial<SolcCompilerLike>
+
+  if (typeof candidate.compile !== 'function' || typeof candidate.version !== 'function') {
+    throw new Error('Failed to initialize solc compiler in Node runtime.')
+  }
+
+  return {
+    compile: (input) => candidate.compile!(input),
+    version: () => candidate.version!(),
+  }
+}
+
+async function createBrowserWorkerCompiler(): Promise<SolcCompilerLike> {
+  const response = await fetch(SOLJSON_PUBLIC_PATH, { cache: 'force-cache' })
+  if (!response.ok) {
+    throw new Error(
+      `Unable to load ${SOLJSON_PUBLIC_PATH}. Ensure build scripts copied soljson.js into public/solc.`,
+    )
+  }
+
+  const source = await response.text()
+  const moduleShim: { exports: unknown } = { exports: {} }
+  const evaluator = new Function(
+    'module',
+    'exports',
+    'process',
+    'globalThis',
+    'self',
+    `${source}\nif (typeof module !== "undefined") { module.exports = Module; }\nreturn module.exports;`,
+  ) as (
+    module: { exports: unknown },
+    exports: unknown,
+    process: unknown,
+    globalThisObj: typeof globalThis,
+    selfObj: typeof globalThis,
+  ) => unknown
+
+  const selfObject = (globalThis as typeof globalThis & { self?: typeof globalThis }).self ?? globalThis
+  const soljson = evaluator(moduleShim, moduleShim.exports, undefined, globalThis, selfObject) as Record<string, unknown>
+  if (!soljson || typeof soljson.cwrap !== 'function') {
+    throw new Error('Failed to initialize browser soljson runtime.')
+  }
+
+  const bindingsModule = await import('solc/bindings')
+  const setupBindings = bindingsModule.default
+  const { coreBindings, compileBindings } = setupBindings(soljson)
+
+  if (typeof compileBindings.compileStandard !== 'function') {
+    throw new Error('compileStandard is unavailable in browser soljson runtime.')
+  }
+
+  return {
+    compile: (input) =>
+      compileBindings.compileStandard(input, {
+        import: () => ({ error: 'File import callback not supported' }),
+        smtSolver: () => ({ error: 'SMT solver callback not supported' }),
+      }),
+    version: () => coreBindings.version(),
+  }
+}
+
+function isNodeRuntime(): boolean {
+  return typeof process !== 'undefined' && Boolean(process.versions?.node)
 }
 
 function pickStrategyContract(output: SolcOutput): SolcOutputContract | null {

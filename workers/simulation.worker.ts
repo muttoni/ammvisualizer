@@ -241,7 +241,7 @@ async function resolveStrategyRuntime(ref: StrategyRef): Promise<ActiveStrategyR
 
   let compiled = compiledCache.get(ref.id)
   if (!compiled) {
-    compiled = runtimeModule.compileCustomStrategySource(item.source, item.name)
+    compiled = await runtimeModule.compileCustomStrategySource(item.source, item.name)
     compiled = {
       ...compiled,
       id: ref.id,
@@ -380,7 +380,7 @@ async function compileOnly(source: string, nameHint?: string): Promise<CustomCom
   const runtimeModule = await loadRuntimeModule()
 
   try {
-    const compiled = runtimeModule.compileCustomStrategySource(source, nameHint)
+    const compiled = await runtimeModule.compileCustomStrategySource(source, nameHint)
     diagnostics = compiled.diagnostics
     return {
       ok: true,
@@ -421,7 +421,7 @@ async function saveCustomStrategy(payload: {
   const runtimeModule = await loadRuntimeModule()
 
   try {
-    const compiledRaw = runtimeModule.compileCustomStrategySource(payload.source, payload.name)
+    const compiledRaw = await runtimeModule.compileCustomStrategySource(payload.source, payload.name)
     const id = payload.id || compiledRaw.id
     const compiled: CompiledCustomStrategy = {
       ...compiledRaw,

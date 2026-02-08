@@ -3,7 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "sync:soljson": "node scripts/sync-soljson.mjs",
+    "postinstall": "npm run sync:soljson",
+    "predev": "npm run sync:soljson",
     "dev": "next dev --webpack",
+    "prebuild": "npm run sync:soljson",
     "build": "next build --webpack",
     "start": "next start",
     "lint": "next lint",

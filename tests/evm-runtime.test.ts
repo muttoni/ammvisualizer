@@ -38,7 +38,7 @@ contract Strategy is AMMStrategyBase {
 
 describe('custom strategy compile/runtime', () => {
   it('compiles and executes callbacks in EVM runtime', async () => {
-    const compiled = compileCustomStrategySource(VALID_SOURCE, 'My Custom')
+    const compiled = await compileCustomStrategySource(VALID_SOURCE, 'My Custom')
 
     expect(compiled.runtimeBytecode.length).toBeGreaterThan(10)
     expect(compiled.afterSwapLine).toBeGreaterThan(0)
@@ -68,9 +68,9 @@ describe('custom strategy compile/runtime', () => {
     expect(swap.changedSlots.length).toBeGreaterThan(0)
   })
 
-  it('returns diagnostics for invalid code', () => {
+  it('returns diagnostics for invalid code', async () => {
     const invalid = `pragma solidity ^0.8.24; contract NotStrategy {}`
 
-    expect(() => compileCustomStrategySource(invalid)).toThrowError(CompileError)
+    await expect(compileCustomStrategySource(invalid)).rejects.toThrowError(CompileError)
   })
 })
