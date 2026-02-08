@@ -1,6 +1,9 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
+import Editor from 'react-simple-code-editor'
+import Prism from 'prismjs'
+import 'prismjs/components/prism-solidity'
 import { BUILTIN_STRATEGIES } from '../lib/strategies/builtins'
 import type { CompilerDiagnostic, CustomCompileResult, StrategyLibraryItem, StrategyRef } from '../lib/sim/types'
 
@@ -72,6 +75,10 @@ export function CodePanel({
   const lineSet = useMemo(() => new Set(highlightedLines), [highlightedLines])
   const firstHighlightedLine = highlightedLines[0] ?? null
   const lines = useMemo(() => code.replace(/\t/g, '    ').split('\n'), [code])
+  const highlightedBuiltinLines = useMemo(
+    () => lines.map((line) => Prism.highlight(line || ' ', Prism.languages.solidity, 'solidity')),
+    [lines],
+  )
 
   const builtinOptions = useMemo(() => availableStrategies.filter((item) => item.kind === 'builtin'), [availableStrategies])
   const customOptions = useMemo(() => availableStrategies.filter((item) => item.kind === 'custom'), [availableStrategies])
@@ -104,12 +111,6 @@ export function CodePanel({
     setDraftName(currentCustom.name)
     setDraftSource(currentCustom.source)
   }, [library, selectedStrategy.id, selectedStrategy.kind])
-
-  useEffect(() => {
-    if (compileResult?.ok) {
-      setActiveTab('builtin')
-    }
-  }, [compileResult?.ok, compileResult?.strategyId])
 
   return (
     <section className={`code-panel ${activeTab === 'custom' ? 'code-panel-custom' : 'code-panel-builtin'} reveal delay-1`}>
@@ -189,7 +190,7 @@ export function CodePanel({
             return (
               <div key={lineNumber} className={`code-line${active ? ' active' : ''}`} data-line={lineNumber}>
                 <span className="line-no">{String(lineNumber).padStart(2, '0')}</span>
-                <span className="line-text">{line || '\u00a0'}</span>
+                <span className="line-text" dangerouslySetInnerHTML={{ __html: highlightedBuiltinLines[index] }} />
               </div>
             )
           })}
@@ -241,12 +242,24 @@ export function CodePanel({
 
           <label className="editor-field editor-field-source" htmlFor="strategySourceInput">
             <span>Solidity Source (contract Strategy)</span>
-            <textarea
+            <small className="editor-helper-note">
+              See{' '}
+              <a href="https://ammchallenge.com" target="_blank" rel="noopener noreferrer">
+                ammchallenge.com
+              </a>{' '}
+              for strategy contract criteria.
+            </small>
+            <Editor
               id="strategySourceInput"
               value={draftSource}
-              onChange={(event) => setDraftSource(event.target.value)}
+              onValueChange={(value) => setDraftSource(value)}
+              highlight={(input) => Prism.highlight(input, Prism.languages.solidity, 'solidity')}
+              padding={12}
+              textareaId="strategySourceInput"
+              className="solidity-editor"
+              textareaClassName="solidity-editor-textarea"
+              preClassName="solidity-editor-pre"
               spellCheck={false}
-              rows={8}
             />
           </label>
 
@@ -276,6 +289,23 @@ export function CodePanel({
           {compileResult ? (
             <div className={`compile-status ${compileResult.ok ? 'ok' : 'error'}`}>
               <strong>{compileResult.ok ? 'Compiled and added to Available strategies.' : 'Compile failed'}</strong>
+              {compileResult.ok ? (
+                <div className="compile-status-actions">
+                  <button
+                    type="button"
+                    className="small-control"
+                    onClick={() => {
+                      onSelectStrategy({
+                        kind: 'custom',
+                        id: compileResult.strategyId,
+                      })
+                      setActiveTab('builtin')
+                    }}
+                  >
+                    Use strategy
+                  </button>
+                </div>
+              ) : null}
               {compileResult.diagnostics.length > 0 ? (
                 <ul>
                   {compileResult.diagnostics.slice(0, 4).map((diagnostic, index) => (

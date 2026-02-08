@@ -161,15 +161,6 @@ export default function Page() {
     }
   }, [customRuntimeEnabled, setStrategyRef, strategyRef.kind])
 
-  useEffect(() => {
-    if (!compileResult?.ok) return
-    setCustomRuntimeEnabled(true)
-    setStrategyRef({
-      kind: 'custom',
-      id: compileResult.strategyId,
-    })
-  }, [compileResult?.ok, compileResult?.strategyId, setStrategyRef])
-
   const fallbackState = useMemo(
     () => buildFallbackUiState(strategyRef, playbackSpeed, maxTapeRows),
     [maxTapeRows, playbackSpeed, strategyRef],
@@ -207,7 +198,6 @@ export default function Page() {
             showExplanationOverlay={showCodeExplanation}
             onToggleExplanationOverlay={() => setShowCodeExplanation(!showCodeExplanation)}
             onCompileAndActivateCustom={(payload) => {
-              setCustomRuntimeEnabled(true)
               controls.compileAndActivateCustom(payload)
             }}
           />

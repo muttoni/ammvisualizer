@@ -488,6 +488,27 @@ h3 {
 
 .line-text {
   white-space: pre;
+  overflow-x: auto;
+}
+
+.line-text .token.comment {
+  color: color-mix(in srgb, var(--ink-soft) 82%, #6d7782);
+}
+
+.line-text .token.keyword {
+  color: color-mix(in srgb, var(--accent) 88%, #8f5c3e);
+}
+
+.line-text .token.string {
+  color: color-mix(in srgb, var(--good) 72%, var(--ink-soft));
+}
+
+.line-text .token.function {
+  color: color-mix(in srgb, var(--accent-soft) 80%, var(--ink));
+}
+
+.line-text .token.number {
+  color: color-mix(in srgb, var(--bad) 58%, var(--accent));
 }
 
 .code-line.active {
@@ -630,6 +651,73 @@ h3 {
   height: 100%;
 }
 
+.editor-helper-note {
+  margin: -2px 0 2px;
+  color: color-mix(in srgb, var(--ink-soft) 92%, #8f9daf);
+  font-size: 0.66rem;
+  text-transform: none;
+  letter-spacing: 0.01em;
+}
+
+.editor-helper-note a {
+  color: var(--accent);
+  text-decoration: none;
+  border-bottom: 1px solid color-mix(in srgb, var(--accent-soft) 58%, transparent);
+}
+
+.editor-helper-note a:hover {
+  color: var(--accent-soft);
+}
+
+.solidity-editor {
+  flex: 1 1 auto;
+  min-height: 220px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--panel-soft);
+  font-family: 'Space Mono', 'Courier New', monospace;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  overflow: auto;
+}
+
+.solidity-editor-pre,
+.solidity-editor-textarea {
+  min-height: 220px;
+  margin: 0;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  white-space: pre;
+  word-wrap: normal;
+}
+
+.solidity-editor-textarea {
+  outline: none;
+  color: transparent;
+  caret-color: var(--ink);
+}
+
+.solidity-editor .token.comment {
+  color: color-mix(in srgb, var(--ink-soft) 82%, #6d7782);
+}
+
+.solidity-editor .token.keyword {
+  color: color-mix(in srgb, var(--accent) 88%, #8f5c3e);
+}
+
+.solidity-editor .token.string {
+  color: color-mix(in srgb, var(--good) 72%, var(--ink-soft));
+}
+
+.solidity-editor .token.function {
+  color: color-mix(in srgb, var(--accent-soft) 80%, var(--ink));
+}
+
+.solidity-editor .token.number {
+  color: color-mix(in srgb, var(--bad) 58%, var(--accent));
+}
+
 .editor-actions,
 .library-actions {
   display: flex;
@@ -670,6 +758,12 @@ h3 {
   padding-left: 16px;
   display: grid;
   gap: 4px;
+}
+
+.compile-status-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .library-list {

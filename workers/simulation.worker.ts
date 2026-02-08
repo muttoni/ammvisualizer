@@ -169,21 +169,6 @@ async function handleMessage(message: WorkerInboundMessage): Promise<void> {
         },
       })
 
-      if (result.ok) {
-        config = {
-          ...config,
-          strategyRef: {
-            kind: 'custom',
-            id: result.strategyId,
-          },
-        }
-        await ensureEngineInitialized()
-        const activeStrategy = await resolveStrategyRuntime(config.strategyRef)
-        engine!.setStrategy(activeStrategy)
-        engine!.setConfig(config)
-        await resetEngine()
-      }
-
       emitLibrary()
       emitState()
       break
