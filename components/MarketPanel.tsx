@@ -10,7 +10,9 @@ interface MarketPanelProps {
   state: WorkerUiState
   theme: ThemeMode
   playbackSpeed: number
+  autoZoom: boolean
   onPlaybackSpeedChange: (value: number) => void
+  onToggleAutoZoom: () => void
   onPlayPause: () => void
   onStep: () => void
   onReset: () => void
@@ -20,7 +22,9 @@ export function MarketPanel({
   state,
   theme,
   playbackSpeed,
+  autoZoom,
   onPlaybackSpeedChange,
+  onToggleAutoZoom,
   onPlayPause,
   onStep,
   onReset,
@@ -66,32 +70,46 @@ export function MarketPanel({
         <div className="market-main">
           <div className="market-controls">
             <div className="button-row market-button-row">
-              <button id="playBtn" type="button" onClick={onPlayPause}>
-                {state.isPlaying ? 'Pause' : 'Play'}
+              <button id="playBtn" className="control-btn" type="button" onClick={onPlayPause}>
+                <ControlIcon kind={state.isPlaying ? 'pause' : 'play'} />
+                <span>{state.isPlaying ? 'Pause' : 'Play'}</span>
               </button>
-              <button id="stepBtn" type="button" onClick={onStep}>
-                Step
+              <button id="stepBtn" className="control-btn" type="button" onClick={onStep}>
+                <ControlIcon kind="step" />
+                <span>Step</span>
               </button>
-              <button id="resetBtn" type="button" onClick={onReset}>
-                Reset
+              <button id="resetBtn" className="control-btn" type="button" onClick={onReset}>
+                <ControlIcon kind="reset" />
+                <span>Reset</span>
               </button>
             </div>
 
-            <label className="control speed-control" htmlFor="speedRange">
-              <span>Speed</span>
-              <div className="speed-inner">
-                <input
-                  id="speedRange"
-                  type="range"
-                  min="1"
-                  max="6"
-                  step="1"
-                  value={playbackSpeed}
-                  onChange={(event) => onPlaybackSpeedChange(Number(event.target.value))}
-                />
-                <strong id="speedLabel">{(SPEED_PROFILE[playbackSpeed] ?? SPEED_PROFILE[3]).label}</strong>
-              </div>
-            </label>
+            <div className="market-controls-right">
+              <label className="control speed-control" htmlFor="speedRange">
+                <span>Speed</span>
+                <div className="speed-inner">
+                  <input
+                    id="speedRange"
+                    type="range"
+                    min="1"
+                    max="6"
+                    step="1"
+                    value={playbackSpeed}
+                    onChange={(event) => onPlaybackSpeedChange(Number(event.target.value))}
+                  />
+                  <strong id="speedLabel">{(SPEED_PROFILE[playbackSpeed] ?? SPEED_PROFILE[3]).label}</strong>
+                </div>
+              </label>
+
+              <button
+                type="button"
+                aria-pressed={autoZoom}
+                className={`small-control graph-toggle ${autoZoom ? 'active' : ''}`}
+                onClick={onToggleAutoZoom}
+              >
+                {autoZoom ? 'Auto-Zoom On' : 'Auto-Zoom Off'}
+              </button>
+            </div>
           </div>
 
           <div className="chart-wrap terminal-surface">
@@ -101,6 +119,7 @@ export function MarketPanel({
               lastEvent={state.lastEvent}
               theme={theme}
               viewWindow={state.viewWindow}
+              autoZoom={autoZoom}
             />
           </div>
 
@@ -175,6 +194,40 @@ export function MarketPanel({
         </aside>
       </div>
     </section>
+  )
+}
+
+function ControlIcon({ kind }: { kind: 'play' | 'pause' | 'step' | 'reset' }) {
+  if (kind === 'pause') {
+    return (
+      <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false" className="btn-icon">
+        <rect x="3" y="2" width="3" height="12" rx="1" />
+        <rect x="10" y="2" width="3" height="12" rx="1" />
+      </svg>
+    )
+  }
+
+  if (kind === 'step') {
+    return (
+      <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false" className="btn-icon">
+        <rect x="2" y="2" width="2" height="12" rx="1" />
+        <path d="M5 2.5v11l8-5.5z" />
+      </svg>
+    )
+  }
+
+  if (kind === 'reset') {
+    return (
+      <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false" className="btn-icon">
+        <path d="M8 2a6 6 0 1 1-4.9 2.5H1.5V1.8L5 5.2H3.9A4.8 4.8 0 1 0 8 3.2z" />
+      </svg>
+    )
+  }
+
+  return (
+    <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false" className="btn-icon">
+      <path d="M4 2.5v11l8-5.5z" />
+    </svg>
   )
 }
 

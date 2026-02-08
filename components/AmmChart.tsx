@@ -1,12 +1,13 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { CHART_THEME } from '../lib/sim/constants'
 import {
   buildArrowPath,
   buildCurvePath,
   buildTrailPath,
   DEFAULT_CHART_GEOMETRY,
+  type ChartWindow,
   getChartViewWindow,
 } from '../lib/sim/chart'
 import type { Snapshot, ThemeMode, TradeEvent } from '../lib/sim/types'
@@ -17,25 +18,41 @@ interface AmmChartProps {
   lastEvent: TradeEvent | null
   theme: ThemeMode
   viewWindow: { xMin: number; xMax: number; yMin: number; yMax: number } | null
+  autoZoom: boolean
 }
 
-export function AmmChart({ snapshot, reserveTrail, lastEvent, theme, viewWindow }: AmmChartProps) {
+export function AmmChart({ snapshot, reserveTrail, lastEvent, theme, viewWindow, autoZoom }: AmmChartProps) {
   const palette = CHART_THEME[theme]
   const geometry = DEFAULT_CHART_GEOMETRY
+  const [frozenWindow, setFrozenWindow] = useState<ChartWindow | null>(null)
 
-  const chart = useMemo(() => {
+  const baseView = useMemo(() => {
     const targetX = Math.sqrt(snapshot.strategy.k / snapshot.fairPrice)
     const targetY = snapshot.strategy.k / targetX
 
-    const window =
+    const liveWindow =
       viewWindow ||
       getChartViewWindow(snapshot, targetX, targetY, reserveTrail, null)
+    return { targetX, targetY, liveWindow }
+  }, [reserveTrail, snapshot, viewWindow])
 
-    const xMin = window.xMin
-    const xMax = window.xMax
-    const yMin = window.yMin
-    const yMax = window.yMax
+  useEffect(() => {
+    if (autoZoom) {
+      setFrozenWindow(null)
+      return
+    }
 
+    if (!frozenWindow) {
+      setFrozenWindow(baseView.liveWindow)
+    }
+  }, [autoZoom, baseView.liveWindow, frozenWindow])
+
+  const chart = useMemo(() => {
+    const activeWindow = autoZoom ? baseView.liveWindow : frozenWindow ?? baseView.liveWindow
+    const xMin = activeWindow.xMin
+    const xMax = activeWindow.xMax
+    const yMin = activeWindow.yMin
+    const yMax = activeWindow.yMax
     const innerW = geometry.width - geometry.margin.left - geometry.margin.right
     const innerH = geometry.height - geometry.margin.top - geometry.margin.bottom
 
@@ -60,8 +77,8 @@ export function AmmChart({ snapshot, reserveTrail, lastEvent, theme, viewWindow 
     }
 
     const targetPoint = {
-      x: xToPx(targetX),
-      y: yToPx(targetY),
+      x: xToPx(baseView.targetX),
+      y: yToPx(baseView.targetY),
     }
 
     const arrow = buildArrowPath(lastEvent, xToPx, yToPx)
@@ -77,7 +94,7 @@ export function AmmChart({ snapshot, reserveTrail, lastEvent, theme, viewWindow 
       innerW,
       innerH,
     }
-  }, [geometry.height, geometry.margin.bottom, geometry.margin.left, geometry.margin.right, geometry.margin.top, geometry.width, lastEvent, reserveTrail, snapshot, viewWindow])
+  }, [autoZoom, baseView.liveWindow, baseView.targetX, baseView.targetY, frozenWindow, geometry.height, geometry.margin.bottom, geometry.margin.left, geometry.margin.right, geometry.margin.top, geometry.width, lastEvent, reserveTrail, snapshot])
 
   return (
     <svg id="curveChart" viewBox={`0 0 ${geometry.width} ${geometry.height}`} role="img" aria-label="AMM reserve curve chart">
@@ -194,7 +211,7 @@ export function AmmChart({ snapshot, reserveTrail, lastEvent, theme, viewWindow 
         normalizer
       </text>
       <text x={geometry.margin.left + 12} y={geometry.margin.top + 46} fill={palette.legendTrail} fontSize="12" fontFamily="Space Mono">
-        recent trail (auto-zoom)
+        {autoZoom ? 'recent trail (auto-zoom)' : 'recent trail (fixed view)'}
       </text>
     </svg>
   )

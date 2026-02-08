@@ -12,11 +12,15 @@ export default function Page() {
   const playbackSpeed = useUiStore((state) => state.playbackSpeed)
   const maxTapeRows = useUiStore((state) => state.maxTapeRows)
   const strategyRef = useUiStore((state) => state.strategyRef)
+  const showCodeExplanation = useUiStore((state) => state.showCodeExplanation)
+  const chartAutoZoom = useUiStore((state) => state.chartAutoZoom)
   const [customRuntimeEnabled, setCustomRuntimeEnabled] = useState(false)
 
   const setTheme = useUiStore((state) => state.setTheme)
   const setPlaybackSpeed = useUiStore((state) => state.setPlaybackSpeed)
   const setStrategyRef = useUiStore((state) => state.setStrategyRef)
+  const setShowCodeExplanation = useUiStore((state) => state.setShowCodeExplanation)
+  const setChartAutoZoom = useUiStore((state) => state.setChartAutoZoom)
 
   const safeStrategyRef = useMemo(() => {
     if (customRuntimeEnabled) {
@@ -88,7 +92,7 @@ export default function Page() {
         <main className="layout">
           <CodePanel
             availableStrategies={workerState.availableStrategies}
-            selectedStrategy={strategyRef}
+            selectedStrategy={workerState.config.strategyRef}
             code={workerState.currentStrategy.code}
             highlightedLines={workerState.lastEvent.codeLines}
             codeExplanation={workerState.lastEvent.codeExplanation}
@@ -97,6 +101,8 @@ export default function Page() {
             library={library}
             compileResult={compileResult}
             onSelectStrategy={setStrategyRef}
+            showExplanationOverlay={showCodeExplanation}
+            onToggleExplanationOverlay={() => setShowCodeExplanation(!showCodeExplanation)}
             onCompileAndActivateCustom={(payload) => {
               setCustomRuntimeEnabled(true)
               controls.compileAndActivateCustom(payload)
@@ -108,7 +114,9 @@ export default function Page() {
             state={workerState}
             theme={theme}
             playbackSpeed={playbackSpeed}
+            autoZoom={chartAutoZoom}
             onPlaybackSpeedChange={setPlaybackSpeed}
+            onToggleAutoZoom={() => setChartAutoZoom(!chartAutoZoom)}
             onPlayPause={() => {
               if (workerState.isPlaying) {
                 controls.pause()

@@ -42,12 +42,13 @@ html[data-theme='dark'] {
 
 html,
 body {
-  height: 100%;
+  height: 100dvh;
+  min-height: 100dvh;
 }
 
 body {
   margin: 0;
-  min-height: 100vh;
+  min-height: 100dvh;
   overflow: hidden;
   color: var(--ink);
   font-family: 'IBM Plex Sans', 'Segoe UI', sans-serif;
@@ -101,9 +102,9 @@ h3 {
   z-index: 1;
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr);
-  gap: 10px;
-  height: 100vh;
-  padding: 12px 14px 14px;
+  gap: 8px;
+  height: 100dvh;
+  padding: 8px 10px 10px;
 }
 
 .topbar {
@@ -170,16 +171,21 @@ h3 {
   min-height: 0;
   display: grid;
   grid-template-columns: minmax(330px, 33vw) minmax(0, 1fr);
-  gap: 12px;
+  gap: 0;
+  border-top: 1px solid var(--line-soft);
 }
 
 .code-panel,
 .market-panel {
   min-height: 0;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  box-shadow: var(--shadow);
-  background: linear-gradient(180deg, var(--panel-strong) 0%, var(--panel) 100%);
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+}
+
+.code-panel {
+  border-right: 1px solid var(--line-soft);
 }
 
 .panel-head {
@@ -187,7 +193,7 @@ h3 {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 10px 12px;
+  padding: 8px 10px;
   border-bottom: 1px solid var(--line-soft);
 }
 
@@ -218,28 +224,42 @@ h3 {
 }
 
 .strategy-tabs {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
+  display: flex;
+  align-items: flex-end;
+  gap: 0;
+  border-bottom: 1px solid var(--line-soft);
+  margin-bottom: 1px;
 }
 
 .strategy-tab {
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: linear-gradient(180deg, var(--panel-strong) 0%, var(--panel-soft) 100%);
+  border: none;
+  border-right: 1px solid var(--line-soft);
+  border-radius: 0;
+  background: transparent;
   color: var(--ink-soft);
   font-family: 'Space Mono', 'Courier New', monospace;
   font-size: 0.7rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  padding: 7px 9px;
+  padding: 7px 10px 6px;
   cursor: pointer;
+  flex: 1;
 }
 
 .strategy-tab.active {
-  border-color: var(--accent-soft);
+  border-bottom: 2px solid var(--accent-soft);
   color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 13%, var(--panel-strong));
+  background: color-mix(in srgb, var(--accent) 6%, var(--panel-strong));
+}
+
+.code-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.overlay-toggle {
+  white-space: nowrap;
 }
 
 .strategy-picker {
@@ -352,13 +372,30 @@ h3 {
 }
 
 .code-view {
-  margin: 8px 10px 0;
-  border: 1px solid var(--line-soft);
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--panel-soft) 80%, white 20%);
+  margin: 0;
+  border-top: 1px solid var(--line-soft);
+  border-bottom: 1px solid var(--line-soft);
+  border-radius: 0;
+  background: color-mix(in srgb, var(--panel-soft) 88%, white 12%);
   min-height: 0;
   overflow: auto;
+  scrollbar-gutter: stable both-edges;
   padding: 9px 0 12px;
+}
+
+.code-overlay-fallback {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  margin: 0 8px 6px 60px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--panel-strong) 94%, white 6%);
+  box-shadow: 0 10px 20px rgba(40, 27, 16, 0.12);
+  padding: 7px 9px;
+  display: grid;
+  gap: 3px;
+  font-size: 0.74rem;
 }
 
 .code-line {
@@ -412,6 +449,12 @@ h3 {
   transition: opacity 120ms ease, transform 120ms ease;
 }
 
+.line-explain-popover.visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
 .line-explain-label {
   font-size: 0.66rem;
   text-transform: uppercase;
@@ -419,15 +462,9 @@ h3 {
   color: var(--ink-soft);
 }
 
-.code-line.active:hover .line-explain-popover,
-.code-line.active:focus-within .line-explain-popover {
-  opacity: 1;
-  transform: translateY(0);
-}
-
 .strategy-lab {
   border-top: 1px solid var(--line-soft);
-  margin-top: 8px;
+  margin-top: 0;
   background: var(--panel-soft);
 }
 
@@ -455,9 +492,10 @@ h3 {
 .strategy-lab-body {
   display: grid;
   gap: 10px;
-  max-height: 33vh;
-  padding: 10px 12px 12px;
+  max-height: 34dvh;
+  padding: 8px 10px 10px;
   overflow: auto;
+  scrollbar-gutter: stable both-edges;
 }
 
 .strategy-lab.closed .strategy-lab-body {
@@ -550,30 +588,31 @@ h3 {
   min-height: 0;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(240px, 310px);
-  gap: 10px;
-  padding: 10px;
+  gap: 0;
+  padding: 0;
 }
 
 .market-main {
   min-height: 0;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
-  gap: 10px;
+  gap: 0;
 }
 
 .terminal-surface {
-  border: 1px solid var(--line-soft);
-  border-radius: 10px;
-  background: var(--panel-soft);
+  border: none;
+  border-radius: 0;
+  background: transparent;
 }
 
 .market-controls {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px 12px;
+  gap: 8px;
   flex-wrap: wrap;
-  padding: 10px 12px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line-soft);
 }
 
 .button-row {
@@ -586,6 +625,14 @@ h3 {
   min-width: 250px;
   flex: 1;
   max-width: 360px;
+}
+
+.market-controls-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .control {
@@ -613,28 +660,36 @@ h3 {
   font-size: 0.72rem;
 }
 
+.graph-toggle.active {
+  border-color: var(--accent-soft);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, var(--panel-strong));
+}
+
 .chart-wrap {
   min-height: 0;
-  padding: 8px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--line-soft);
 }
 
 #curveChart {
   width: 100%;
   height: 100%;
   min-height: 340px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
+  border: none;
+  border-radius: 0;
   background: linear-gradient(180deg, color-mix(in srgb, var(--panel) 74%, white 26%) 0%, color-mix(in srgb, var(--panel-soft) 88%, transparent) 100%);
 }
 
 .market-bottom {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
-  gap: 10px;
+  gap: 0;
 }
 
 .metrics-panel {
   padding: 8px;
+  border-right: 1px solid var(--line-soft);
 }
 
 .metrics {
@@ -768,7 +823,8 @@ h3 {
   min-height: 0;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
-  padding: 9px;
+  padding: 8px;
+  border-left: 1px solid var(--line-soft);
 }
 
 .trade-column-head {
@@ -794,6 +850,7 @@ h3 {
   gap: 7px;
   min-height: 0;
   overflow: auto;
+  scrollbar-gutter: stable both-edges;
 }
 
 .trade-row {
@@ -853,6 +910,20 @@ h3 {
   color: var(--bad);
 }
 
+.control-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.btn-icon {
+  width: 12px;
+  height: 12px;
+  fill: currentColor;
+  flex: none;
+}
+
 .reveal {
   opacity: 0;
   transform: translateY(8px);
@@ -897,39 +968,39 @@ h3 {
 }
 
 @media (max-width: 1260px) {
-  body {
-    overflow: auto;
-  }
-
-  .app-shell {
-    height: auto;
-    min-height: 100vh;
-  }
-
   .layout {
     grid-template-columns: 1fr;
+    grid-template-rows: minmax(280px, 42dvh) minmax(0, 1fr);
   }
 
   .code-panel {
-    max-height: min(860px, 78vh);
+    border-right: none;
+    border-bottom: 1px solid var(--line-soft);
   }
 
   .market-grid {
     grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) minmax(170px, 34dvh);
   }
 
   .trade-column {
-    max-height: 290px;
+    border-left: none;
+    border-top: 1px solid var(--line-soft);
   }
 
   .market-bottom {
     grid-template-columns: 1fr;
   }
+
+  .metrics-panel {
+    border-right: none;
+    border-bottom: 1px solid var(--line-soft);
+  }
 }
 
 @media (max-width: 860px) {
   .app-shell {
-    padding: 10px;
+    padding: 8px;
   }
 
   .topbar {
@@ -951,7 +1022,12 @@ h3 {
   }
 
   .strategy-tabs {
-    grid-template-columns: 1fr;
+    flex-direction: column;
+  }
+
+  .strategy-tab {
+    border-right: none;
+    border-bottom: 1px solid var(--line-soft);
   }
 
   .strategy-picker-controls {
@@ -988,7 +1064,7 @@ h3 {
     margin-top: 4px;
   }
 
-  .code-line.active .line-explain-popover {
+  .line-explain-popover.visible {
     opacity: 1;
     transform: none;
     pointer-events: auto;

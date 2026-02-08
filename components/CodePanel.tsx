@@ -14,7 +14,9 @@ interface CodePanelProps {
   diagnostics: CompilerDiagnostic[]
   library: StrategyLibraryItem[]
   compileResult: CustomCompileResult | null
+  showExplanationOverlay: boolean
   onSelectStrategy: (strategy: StrategyRef) => void
+  onToggleExplanationOverlay: () => void
   onCompileAndActivateCustom: (payload: { id?: string; name: string; source: string }) => void
   onDeleteCustom: (id: string) => void
 }
@@ -47,7 +49,9 @@ export function CodePanel({
   diagnostics,
   library,
   compileResult,
+  showExplanationOverlay,
   onSelectStrategy,
+  onToggleExplanationOverlay,
   onCompileAndActivateCustom,
   onDeleteCustom,
 }: CodePanelProps) {
@@ -58,6 +62,7 @@ export function CodePanel({
   const [draftSource, setDraftSource] = useState(DEFAULT_SOURCE)
 
   const lineSet = useMemo(() => new Set(highlightedLines), [highlightedLines])
+  const firstHighlightedLine = highlightedLines[0] ?? null
   const lines = useMemo(() => code.replace(/\t/g, '    ').split('\n'), [code])
 
   const builtinOptions = useMemo(() => availableStrategies.filter((item) => item.kind === 'builtin'), [availableStrategies])
@@ -70,54 +75,68 @@ export function CodePanel({
     return builtinOptions[0]?.id ?? ''
   }, [builtinOptions, selectedStrategy])
 
-  const selectedCustom = useMemo(
-    () =>
-      selectedStrategy.kind === 'custom'
-        ? library.find((item) => item.id === selectedStrategy.id) || null
-        : null,
-    [library, selectedStrategy],
-  )
-
   useEffect(() => {
-    if (selectedStrategy.kind === 'custom') {
-      setActiveTab('custom')
-    }
+    setActiveTab(selectedStrategy.kind === 'custom' ? 'custom' : 'builtin')
   }, [selectedStrategy.kind])
 
   useEffect(() => {
-    if (!containerRef.current || highlightedLines.length === 0) return
+    if (!containerRef.current || firstHighlightedLine === null) return
 
-    const firstLine = highlightedLines[0]
-    const target = containerRef.current.querySelector<HTMLDivElement>(`.code-line[data-line='${firstLine}']`)
+    const target = containerRef.current.querySelector<HTMLDivElement>(`.code-line[data-line='${firstHighlightedLine}']`)
     if (target) {
       target.scrollIntoView({ block: 'center', behavior: 'smooth' })
     }
-  }, [highlightedLines])
+  }, [firstHighlightedLine])
 
   useEffect(() => {
-    if (selectedCustom) {
-      setDraftId(selectedCustom.id)
-      setDraftName(selectedCustom.name)
-      setDraftSource(selectedCustom.source)
+    if (selectedStrategy.kind !== 'custom') return
+    const currentCustom = library.find((item) => item.id === selectedStrategy.id)
+    if (!currentCustom) return
+
+    setDraftId(currentCustom.id)
+    setDraftName(currentCustom.name)
+    setDraftSource(currentCustom.source)
+  }, [library, selectedStrategy.id, selectedStrategy.kind])
+
+  useEffect(() => {
+    if (!draftId) return
+    if (library.some((item) => item.id === draftId)) return
+
+    if (library.length === 0) {
+      setDraftId(undefined)
+      setDraftName('My Strategy')
+      setDraftSource(DEFAULT_SOURCE)
       return
     }
 
-    if (!draftId && library.length > 0) {
-      const recent = library[0]
-      setDraftId(recent.id)
-      setDraftName(recent.name)
-      setDraftSource(recent.source)
-    }
-  }, [draftId, library, selectedCustom])
+    const fallback = library[0]
+    setDraftId(fallback.id)
+    setDraftName(fallback.name)
+    setDraftSource(fallback.source)
+  }, [draftId, library])
+
+  useEffect(() => {
+    if (activeTab !== 'custom' || draftId || library.length === 0) return
+
+    const fallback = library[0]
+    setDraftId(fallback.id)
+    setDraftName(fallback.name)
+    setDraftSource(fallback.source)
+  }, [activeTab, draftId, library])
 
   return (
     <section className="code-panel reveal delay-1">
       <div className="panel-head panel-head-stack">
         <div className="panel-head-row">
           <h2>Strategy Code</h2>
-          <span id="strategyStateBadge" className="badge">
-            {stateBadge}
-          </span>
+          <div className="code-head-actions">
+            <span id="strategyStateBadge" className="badge">
+              {stateBadge}
+            </span>
+            <button type="button" className="small-control overlay-toggle" onClick={onToggleExplanationOverlay}>
+              {showExplanationOverlay ? 'Hide Explanation' : 'Show Explanation'}
+            </button>
+          </div>
         </div>
 
         <div className="strategy-tabs" role="tablist" aria-label="Strategy modes">
@@ -128,7 +147,7 @@ export function CodePanel({
             className={`strategy-tab ${activeTab === 'builtin' ? 'active' : ''}`}
             onClick={() => setActiveTab('builtin')}
           >
-            Built-in Strategies
+            Built-in
           </button>
           <button
             type="button"
@@ -137,7 +156,7 @@ export function CodePanel({
             className={`strategy-tab ${activeTab === 'custom' ? 'active' : ''}`}
             onClick={() => setActiveTab('custom')}
           >
-            Custom Strategies
+            Custom
           </button>
         </div>
 
@@ -160,7 +179,7 @@ export function CodePanel({
           </label>
         ) : (
           <p className="custom-runtime-note">
-            Runtime stays lightweight until you click <strong>Compile &amp; Run</strong> for a custom strategy.
+            Custom runtime loads only after you click <strong>Compile &amp; Run</strong>.
           </p>
         )}
       </div>
@@ -177,15 +196,24 @@ export function CodePanel({
       ) : null}
 
       <div ref={containerRef} id="codeView" className="code-view" aria-label="Strategy code">
+        {showExplanationOverlay && firstHighlightedLine === null ? (
+          <div className="code-overlay-fallback" role="note">
+            <span className="line-explain-label">What This Line Did</span>
+            <span>{codeExplanation}</span>
+          </div>
+        ) : null}
+
         {lines.map((line, index) => {
           const lineNumber = index + 1
           const active = lineSet.has(lineNumber)
+          const renderOverlay = showExplanationOverlay && lineNumber === firstHighlightedLine && active
+
           return (
             <div key={lineNumber} className={`code-line${active ? ' active' : ''}`} data-line={lineNumber}>
               <span className="line-no">{String(lineNumber).padStart(2, '0')}</span>
               <span className="line-text">{line || '\u00a0'}</span>
-              {active ? (
-                <div className="line-explain-popover" role="note">
+              {renderOverlay ? (
+                <div className="line-explain-popover visible" role="note">
                   <span className="line-explain-label">What This Line Did</span>
                   <span>{codeExplanation}</span>
                 </div>
