@@ -12,6 +12,7 @@ interface MarketPanelProps {
   theme: ThemeMode
   playbackSpeed: number
   autoZoom: boolean
+  isInitializing?: boolean
   onPlaybackSpeedChange: (value: number) => void
   onToggleAutoZoom: () => void
   onPlayPause: () => void
@@ -24,6 +25,7 @@ export function MarketPanel({
   theme,
   playbackSpeed,
   autoZoom,
+  isInitializing = false,
   onPlaybackSpeedChange,
   onToggleAutoZoom,
   onPlayPause,
@@ -101,6 +103,7 @@ export function MarketPanel({
         <h2>Simulated Market</h2>
         <span id="clockLabel" className="clock">
           Step {snapshot.step} | Trade {state.tradeCount}
+          {isInitializing ? ' | Loading' : ''}
         </span>
       </div>
 
@@ -108,15 +111,15 @@ export function MarketPanel({
         <div className="market-main">
           <div className="market-controls">
             <div className="button-row market-button-row">
-              <button id="playBtn" className="control-btn" type="button" onClick={onPlayPause}>
+              <button id="playBtn" className="control-btn" type="button" onClick={onPlayPause} disabled={isInitializing}>
                 <ControlIcon kind={state.isPlaying ? 'pause' : 'play'} />
                 <span>{state.isPlaying ? 'Pause' : 'Play'}</span>
               </button>
-              <button id="stepBtn" className="control-btn" type="button" onClick={onStep}>
+              <button id="stepBtn" className="control-btn" type="button" onClick={onStep} disabled={isInitializing}>
                 <ControlIcon kind="step" />
                 <span>Step</span>
               </button>
-              <button id="resetBtn" className="control-btn" type="button" onClick={onReset}>
+              <button id="resetBtn" className="control-btn" type="button" onClick={onReset} disabled={isInitializing}>
                 <ControlIcon kind="reset" />
                 <span>Reset</span>
               </button>
@@ -133,6 +136,7 @@ export function MarketPanel({
                     max="6"
                     step="1"
                     value={playbackSpeed}
+                    disabled={isInitializing}
                     onChange={(event) => onPlaybackSpeedChange(Number(event.target.value))}
                   />
                   <strong id="speedLabel">{(SPEED_PROFILE[playbackSpeed] ?? SPEED_PROFILE[3]).label}</strong>
@@ -143,6 +147,7 @@ export function MarketPanel({
                 type="button"
                 aria-pressed={autoZoom}
                 className={`small-control graph-toggle ${autoZoom ? 'active' : ''}`}
+                disabled={isInitializing}
                 onClick={onToggleAutoZoom}
               >
                 {autoZoom ? 'Auto-Zoom On' : 'Auto-Zoom Off'}
@@ -235,7 +240,11 @@ export function MarketPanel({
           </div>
 
           <ul id="tradeTape" className={`trade-tape${state.history.length === 0 ? ' is-empty' : ''}`}>
-            {state.history.length === 0 ? <li className="trade-row trade-row-empty">No trades yet. Press Step or Play.</li> : null}
+            {state.history.length === 0 ? (
+              <li className="trade-row trade-row-empty">
+                {isInitializing ? 'Simulation is loading. Controls unlock in a moment.' : 'No trades yet. Press Step or Play.'}
+              </li>
+            ) : null}
             {state.history.map((event) => (
               <TradeTapeRow key={event.id} event={event} />
             ))}

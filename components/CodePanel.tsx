@@ -113,67 +113,60 @@ export function CodePanel({
 
   return (
     <section className={`code-panel ${activeTab === 'custom' ? 'code-panel-custom' : 'code-panel-builtin'} reveal delay-1`}>
-      <div className="panel-head panel-head-stack">
-        <div className="panel-head-row">
-          <h2>Strategy Code</h2>
-          <div className="code-head-actions">
-            <button type="button" className="small-control overlay-toggle" onClick={onToggleExplanationOverlay}>
-              {showExplanationOverlay ? 'Hide Explanation' : 'Show Explanation'}
+      <div className="panel-head">
+        <div className="panel-head-stack">
+          <div className="panel-head-row">
+            <h2>Strategy</h2>
+          </div>
+
+          <div className="strategy-tabs" role="tablist" aria-label="Strategy modes">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === 'builtin'}
+              className={`strategy-tab ${activeTab === 'builtin' ? 'active' : ''}`}
+              onClick={() => setActiveTab('builtin')}
+            >
+              Current Strategy
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === 'custom'}
+              className={`strategy-tab ${activeTab === 'custom' ? 'active' : ''}`}
+              onClick={() => setActiveTab('custom')}
+            >
+              Add New Strategy
             </button>
           </div>
-        </div>
 
-        <div className="strategy-tabs" role="tablist" aria-label="Strategy modes">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeTab === 'builtin'}
-            className={`strategy-tab ${activeTab === 'builtin' ? 'active' : ''}`}
-            onClick={() => setActiveTab('builtin')}
-          >
-            Available Strategies
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeTab === 'custom'}
-            className={`strategy-tab ${activeTab === 'custom' ? 'active' : ''}`}
-            onClick={() => setActiveTab('custom')}
-          >
-            Custom Editor
-          </button>
-        </div>
-
-        {activeTab === 'builtin' ? (
-          <div className="strategy-picker strategy-picker-wide">
-            <select
-              id="availableStrategySelect"
-              value={selectedAvailableValue}
-              onChange={(event) => onSelectStrategy(decodeStrategyRef(event.target.value))}
-            >
-              <optgroup label="Built-in">
-                {builtinOptions.map((option) => (
-                  <option key={`${option.kind}-${option.id}`} value={`${option.kind}:${option.id}`}>
-                    {option.name}
-                  </option>
-                ))}
-              </optgroup>
-              {customOptions.length > 0 ? (
-                <optgroup label="Custom">
-                  {customOptions.map((option) => (
+          {activeTab === 'builtin' ? (
+            <div className="strategy-picker strategy-picker-wide">
+              <select
+                id="availableStrategySelect"
+                value={selectedAvailableValue}
+                onChange={(event) => onSelectStrategy(decodeStrategyRef(event.target.value))}
+              >
+                <optgroup label="Built-in">
+                  {builtinOptions.map((option) => (
                     <option key={`${option.kind}-${option.id}`} value={`${option.kind}:${option.id}`}>
                       {option.name}
                     </option>
                   ))}
                 </optgroup>
-              ) : null}
-            </select>
-          </div>
-        ) : (
-          <p className="custom-runtime-note">
-            Use this pane only for editing. Compile will save locally and add it to <strong>Available strategies</strong>.
-          </p>
-        )}
+                {customOptions.length > 0 ? (
+                  <optgroup label="Custom">
+                    {customOptions.map((option) => (
+                      <option key={`${option.kind}-${option.id}`} value={`${option.kind}:${option.id}`}>
+                        {option.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                ) : null}
+              </select>
+            </div>
+          ) : null}
+        </div>
       </div>
 
       {activeTab === 'builtin' && diagnostics.length > 0 ? (
@@ -189,32 +182,43 @@ export function CodePanel({
 
       {activeTab === 'builtin' ? (
         <div ref={containerRef} id="codeView" className="code-view" aria-label="Strategy code">
-          {showExplanationOverlay && firstHighlightedLine === null ? (
-            <div className="code-overlay-fallback" role="note">
-              <span className="line-explain-label">What This Line Did</span>
-              <span>{codeExplanation}</span>
-            </div>
-          ) : null}
-
           {lines.map((line, index) => {
             const lineNumber = index + 1
             const active = lineSet.has(lineNumber)
-            const renderOverlay = showExplanationOverlay && lineNumber === firstHighlightedLine && active
 
             return (
               <div key={lineNumber} className={`code-line${active ? ' active' : ''}`} data-line={lineNumber}>
                 <span className="line-no">{String(lineNumber).padStart(2, '0')}</span>
                 <span className="line-text">{line || '\u00a0'}</span>
-                {renderOverlay ? (
-                  <div className="line-explain-popover visible" role="note">
-                    <span className="line-explain-label">What This Line Did</span>
-                    <span>{codeExplanation}</span>
-                  </div>
-                ) : null}
               </div>
             )
           })}
         </div>
+      ) : null}
+
+      {activeTab === 'builtin' ? (
+        <section className={`code-explain-section ${showExplanationOverlay ? 'expanded' : 'collapsed'}`} role="note" aria-live="polite">
+          <button
+            type="button"
+            className="code-explain-toggle"
+            onClick={onToggleExplanationOverlay}
+            aria-expanded={showExplanationOverlay}
+            aria-controls="codeExplanationBody"
+          >
+            <span>What the code is doing</span>
+            <svg
+              className={`code-explain-icon ${showExplanationOverlay ? 'expanded' : ''}`}
+              viewBox="0 0 20 20"
+              aria-hidden="true"
+              focusable="false"
+            >
+              <path d="M5.5 7.5 10 12l4.5-4.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+            </svg>
+          </button>
+          <p id="codeExplanationBody" hidden={!showExplanationOverlay}>
+            {codeExplanation || 'Step or play to see the current strategy decision.'}
+          </p>
+        </section>
       ) : null}
 
       <section className={`strategy-lab ${activeTab === 'custom' ? 'open' : 'closed'}`}>

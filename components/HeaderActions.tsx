@@ -30,7 +30,12 @@ export function HeaderActions({ theme, onToggleTheme }: HeaderActionsProps) {
     <header className="topbar reveal">
       <div className="brand-block">
         <h1>AMM Strategy Visualizer</h1>
-        <p>Research terminal for step-by-step fee strategy behavior.</p>
+        <p>
+          Step-by-step Automated Market Maker (AMM) strategy visualizer. Learn more at{' '}
+          <a href="https://ammchallenge.com" target="_blank" rel="noopener noreferrer">
+            ammchallenge.com
+          </a>
+        </p>
       </div>
 
       <div className="top-actions">

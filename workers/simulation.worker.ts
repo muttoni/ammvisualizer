@@ -47,17 +47,21 @@ let stepping = false
 let rng = new SeededRng(config.seed)
 let diagnostics: CompilerDiagnostic[] = []
 let strategyLibrary: StrategyLibraryItem[] = []
+let messageQueue: Promise<void> = Promise.resolve()
 
 const compiledCache = new Map<string, CompiledCustomStrategy>()
 const runtimeCache = new Map<string, CustomStrategyRuntime>()
 let runtimeModulePromise: Promise<RuntimeModule> | null = null
 
-worker.onmessage = async (event) => {
-  try {
-    await handleMessage(event.data)
-  } catch (error) {
-    emitError(error)
-  }
+worker.onmessage = (event) => {
+  const inbound = event.data
+  messageQueue = messageQueue
+    .then(async () => {
+      await handleMessage(inbound)
+    })
+    .catch((error) => {
+      emitError(error)
+    })
 }
 
 async function handleMessage(message: WorkerInboundMessage): Promise<void> {
