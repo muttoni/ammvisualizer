@@ -1,0 +1,31 @@
+{
+  "name": "ammvisualizer",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@ethereumjs/common": "^10.0.0",
+    "@ethereumjs/vm": "^10.0.0",
+    "idb-keyval": "^6.2.1",
+    "next": "^15.0.0",
+    "react": "19.0.0",
+    "react-dom": "19.0.0",
+    "solc": "^0.8.30",
+    "zustand": "^5.0.6"
+  },
+  "devDependencies": {
+    "@testing-library/react": "^16.1.0",
+    "@types/node": "^22.10.7",
+    "@types/react": "^19.0.7",
+    "@types/react-dom": "^19.0.3",
+    "typescript": "^5.7.3",
+    "vitest": "^2.1.8"
+  }
+}
