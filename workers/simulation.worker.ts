@@ -17,14 +17,10 @@ import {
   saveCustomStrategyItem,
 } from '../lib/persistence/customStrategies'
 import { type WorkerInboundMessage, type WorkerOutboundMessage } from './messages'
-import {
-  CompileError,
-  compileCustomStrategySource,
-  createCustomStrategyRuntime,
-  toLibraryItem,
-  type CompiledCustomStrategy,
-  type CustomStrategyRuntime,
-} from './evm/runtime'
+
+type RuntimeModule = typeof import('./evm/runtime')
+type CompiledCustomStrategy = Awaited<ReturnType<RuntimeModule['compileCustomStrategySource']>>
+type CustomStrategyRuntime = Awaited<ReturnType<RuntimeModule['createCustomStrategyRuntime']>>
 
 const worker = self as unknown as {
   postMessage: (message: WorkerOutboundMessage) => void
@@ -54,6 +50,7 @@ let strategyLibrary: StrategyLibraryItem[] = []
 
 const compiledCache = new Map<string, CompiledCustomStrategy>()
 const runtimeCache = new Map<string, CustomStrategyRuntime>()
+let runtimeModulePromise: Promise<RuntimeModule> | null = null
 
 worker.onmessage = async (event) => {
   try {
@@ -240,9 +237,11 @@ async function resolveStrategyRuntime(ref: StrategyRef): Promise<ActiveStrategyR
     throw new Error(`Custom strategy '${ref.id}' not found in local library.`)
   }
 
+  const runtimeModule = await loadRuntimeModule()
+
   let compiled = compiledCache.get(ref.id)
   if (!compiled) {
-    compiled = compileCustomStrategySource(item.source, item.name)
+    compiled = runtimeModule.compileCustomStrategySource(item.source, item.name)
     compiled = {
       ...compiled,
       id: ref.id,
@@ -254,7 +253,7 @@ async function resolveStrategyRuntime(ref: StrategyRef): Promise<ActiveStrategyR
 
   let runtime = runtimeCache.get(ref.id)
   if (!runtime) {
-    runtime = await createCustomStrategyRuntime(compiled)
+    runtime = await runtimeModule.createCustomStrategyRuntime(compiled)
     runtimeCache.set(ref.id, runtime)
   }
 
@@ -279,6 +278,14 @@ function withChangedSlots(result: {
     ...result,
     changedSlots: [],
   }
+}
+
+async function loadRuntimeModule(): Promise<RuntimeModule> {
+  if (!runtimeModulePromise) {
+    runtimeModulePromise = import('./evm/runtime')
+  }
+
+  return runtimeModulePromise
 }
 
 async function resetEngine(): Promise<void> {
@@ -370,8 +377,10 @@ function emitLibrary(): void {
 }
 
 async function compileOnly(source: string, nameHint?: string): Promise<CustomCompileResult> {
+  const runtimeModule = await loadRuntimeModule()
+
   try {
-    const compiled = compileCustomStrategySource(source, nameHint)
+    const compiled = runtimeModule.compileCustomStrategySource(source, nameHint)
     diagnostics = compiled.diagnostics
     return {
       ok: true,
@@ -380,7 +389,7 @@ async function compileOnly(source: string, nameHint?: string): Promise<CustomCom
       strategyName: compiled.name,
     }
   } catch (error) {
-    if (error instanceof CompileError) {
+    if (error instanceof runtimeModule.CompileError) {
       diagnostics = error.diagnostics
       return {
         ok: false,
@@ -409,8 +418,10 @@ async function saveCustomStrategy(payload: {
   name: string
   source: string
 }): Promise<CustomCompileResult> {
+  const runtimeModule = await loadRuntimeModule()
+
   try {
-    const compiledRaw = compileCustomStrategySource(payload.source, payload.name)
+    const compiledRaw = runtimeModule.compileCustomStrategySource(payload.source, payload.name)
     const id = payload.id || compiledRaw.id
     const compiled: CompiledCustomStrategy = {
       ...compiledRaw,
@@ -422,7 +433,7 @@ async function saveCustomStrategy(payload: {
     diagnostics = compiled.diagnostics
 
     const existing = strategyLibrary.find((item) => item.id === id)
-    const item = toLibraryItem(compiled, existing)
+    const item = runtimeModule.toLibraryItem(compiled, existing)
     strategyLibrary = await saveCustomStrategyItem(item)
 
     compiledCache.set(id, compiled)
@@ -435,7 +446,7 @@ async function saveCustomStrategy(payload: {
       strategyName: payload.name,
     }
   } catch (error) {
-    if (error instanceof CompileError) {
+    if (error instanceof runtimeModule.CompileError) {
       diagnostics = error.diagnostics
       return {
         ok: false,

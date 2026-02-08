@@ -3,29 +3,29 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "dev": "next dev --webpack",
+    "build": "next build --webpack",
     "start": "next start",
     "lint": "next lint",
     "test": "vitest run",
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@ethereumjs/common": "^10.0.0",
-    "@ethereumjs/vm": "^10.0.0",
-    "idb-keyval": "^6.2.1",
-    "next": "^15.0.0",
-    "react": "19.0.0",
-    "react-dom": "19.0.0",
-    "solc": "^0.8.24",
-    "zustand": "^5.0.6"
+    "@ethereumjs/common": "^10.1.1",
+    "@ethereumjs/vm": "^10.1.1",
+    "idb-keyval": "^6.2.2",
+    "next": "^16.1.6",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "solc": "^0.8.33",
+    "zustand": "^5.0.11"
   },
   "devDependencies": {
-    "@testing-library/react": "^16.1.0",
-    "@types/node": "^22.10.7",
-    "@types/react": "^19.0.7",
-    "@types/react-dom": "^19.0.3",
-    "typescript": "^5.7.3",
-    "vitest": "^2.1.8"
+    "@testing-library/react": "^16.3.2",
+    "@types/node": "^25.2.2",
+    "@types/react": "^19.2.13",
+    "@types/react-dom": "^19.2.3",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
   }
 }
