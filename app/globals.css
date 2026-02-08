@@ -361,6 +361,7 @@ h3 {
 .editor-field input {
   min-height: 34px;
   padding: 6px 8px;
+  width: 100%;
 }
 
 .editor-field textarea {
@@ -548,12 +549,15 @@ h3 {
 }
 
 .strategy-lab-body {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 10px;
   max-height: 34dvh;
   padding: 8px 10px 10px;
   overflow: auto;
   scrollbar-gutter: stable both-edges;
+  align-items: stretch;
+  justify-content: flex-start;
 }
 
 .code-panel-custom .strategy-lab {
@@ -566,6 +570,7 @@ h3 {
 .code-panel-custom .strategy-lab-body {
   max-height: none;
   height: 100%;
+  min-height: 0;
 }
 
 .strategy-lab.closed .strategy-lab-body {
@@ -582,11 +587,30 @@ h3 {
   text-transform: uppercase;
 }
 
+.editor-field-source {
+  flex: 1 1 auto;
+  min-height: 240px;
+  display: flex;
+  flex-direction: column;
+}
+
+.editor-field-source textarea {
+  flex: 1 1 auto;
+  min-height: 220px;
+  height: 100%;
+}
+
 .editor-actions,
 .library-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 7px;
+  align-items: center;
+  flex: 0 0 auto;
+}
+
+.editor-actions button {
+  min-height: 36px;
 }
 
 .compile-status {
@@ -598,6 +622,7 @@ h3 {
   padding: 8px 9px;
   font-family: 'Space Mono', 'Courier New', monospace;
   font-size: 0.7rem;
+  flex: 0 0 auto;
 }
 
 .compile-status.ok {

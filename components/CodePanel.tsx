@@ -235,7 +235,7 @@ export function CodePanel({
             />
           </label>
 
-          <label className="editor-field" htmlFor="strategySourceInput">
+          <label className="editor-field editor-field-source" htmlFor="strategySourceInput">
             <span>Solidity Source (contract Strategy)</span>
             <textarea
               id="strategySourceInput"
