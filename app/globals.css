@@ -1206,31 +1206,58 @@ h3 {
 }
 
 @media (max-width: 1260px) {
+  html,
+  body {
+    height: auto;
+    min-height: 100%;
+  }
+
+  body {
+    overflow: auto;
+  }
+
+  .app-shell {
+    position: relative;
+    inset: auto;
+    height: auto;
+    min-height: 100dvh;
+    overflow: visible;
+  }
+
   .layout {
     display: flex;
     flex-direction: column;
+    min-height: auto;
   }
 
   .code-panel {
     flex: initial;
     min-width: 0;
-    min-height: min(420px, 46dvh);
+    min-height: 360px;
+    height: auto;
     border-right: none;
     border-bottom: 1px solid var(--line-soft);
   }
 
   .market-panel {
-    flex: 1 1 auto;
+    flex: initial;
+    min-height: 0;
+    height: auto;
   }
 
   .market-grid {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: minmax(0, 1fr) minmax(170px, 34dvh);
+    grid-template-rows: auto auto;
   }
 
   .trade-column {
     border-left: none;
     border-top: 1px solid var(--line-soft);
+    min-height: 180px;
+  }
+
+  .trade-tape {
+    max-height: 38dvh;
   }
 
   .market-bottom {
@@ -1246,20 +1273,58 @@ h3 {
 @media (max-width: 860px) {
   .app-shell {
     padding: 8px;
+    min-height: 100svh;
+    height: auto;
+    overflow: visible;
+    gap: 6px;
   }
 
   .topbar {
     flex-direction: column;
     align-items: flex-start;
+    gap: 8px;
   }
 
   .top-actions {
-    flex-wrap: wrap;
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .terminal-link {
+    justify-content: center;
+    width: 100%;
+  }
+
+  .theme-toggle {
+    grid-column: 1 / -1;
+    width: 100%;
   }
 
   .panel-head {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .layout {
+    display: block;
+    min-height: auto;
+  }
+
+  .code-panel,
+  .market-panel,
+  .market-grid,
+  .market-main,
+  .market-bottom,
+  .trade-column {
+    height: auto;
+    min-height: 0;
+    overflow: visible;
+  }
+
+  .code-panel {
+    min-height: 0;
   }
 
   .strategy-picker {
@@ -1270,8 +1335,23 @@ h3 {
     width: 100%;
   }
 
+  .strategy-tab {
+    font-size: 0.72rem;
+    line-height: 1.25;
+    padding: 9px 8px;
+  }
+
   .strategy-picker-controls {
     grid-template-columns: 1fr;
+  }
+
+  .code-view {
+    max-height: 44svh;
+  }
+
+  .strategy-lab-body {
+    max-height: none;
+    overflow: visible;
   }
 
   .control {
@@ -1280,10 +1360,23 @@ h3 {
 
   .market-controls {
     align-items: stretch;
+    gap: 6px;
   }
 
   .market-button-row {
     max-width: none;
+    min-width: 0;
+  }
+
+  .market-controls-right {
+    width: 100%;
+    justify-content: flex-start;
+    gap: 6px;
+  }
+
+  .speed-control {
+    width: 100%;
+    grid-template-columns: 48px minmax(0, 1fr);
   }
 
   .metrics {
@@ -1295,6 +1388,25 @@ h3 {
   }
 
   #curveChart {
-    min-height: 275px;
+    min-height: 220px;
+  }
+
+  .trade-tape {
+    max-height: 34svh;
+    overflow: auto;
+  }
+}
+
+@media (max-width: 640px) {
+  .topbar p {
+    display: none;
+  }
+
+  .depth-legend {
+    display: none;
+  }
+
+  .code-view {
+    max-height: 38svh;
   }
 }
