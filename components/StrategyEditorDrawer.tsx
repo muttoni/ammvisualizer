@@ -115,16 +115,6 @@ export function StrategyEditorDrawer({
             <button type="button" onClick={() => onSave({ id: draftId, name, source })}>
               Save
             </button>
-            <button
-              type="button"
-              onClick={() => {
-                setDraftId(undefined)
-                setName('My Strategy')
-                setSource(DEFAULT_SOURCE)
-              }}
-            >
-              New Draft
-            </button>
           </div>
 
           {compileResult ? (

@@ -16,7 +16,7 @@ import {
   loadCustomStrategyLibrary,
   saveCustomStrategyItem,
 } from '../lib/persistence/customStrategies'
-import { type WorkerInboundMessage, type WorkerOutboundMessage } from './messages'
+import { type CompileStatusPhase, type WorkerInboundMessage, type WorkerOutboundMessage } from './messages'
 
 type RuntimeModule = typeof import('./evm/runtime')
 type CompiledCustomStrategy = Awaited<ReturnType<RuntimeModule['compileCustomStrategySource']>>
@@ -395,12 +395,26 @@ function emitLibrary(): void {
   })
 }
 
+function emitCompileStatus(phase: CompileStatusPhase): void {
+  worker.postMessage({
+    type: 'COMPILE_STATUS',
+    payload: {
+      status: { phase },
+    },
+  })
+}
+
 async function compileOnly(source: string, nameHint?: string): Promise<CustomCompileResult> {
+  if (!runtimeModulePromise) {
+    emitCompileStatus('loading_runtime')
+  }
   const runtimeModule = await loadRuntimeModule()
+  emitCompileStatus('compiling')
 
   try {
     const compiled = await runtimeModule.compileCustomStrategySource(source, nameHint)
     diagnostics = compiled.diagnostics
+    emitCompileStatus('completed')
     return {
       ok: true,
       diagnostics,
@@ -410,6 +424,7 @@ async function compileOnly(source: string, nameHint?: string): Promise<CustomCom
   } catch (error) {
     if (error instanceof runtimeModule.CompileError) {
       diagnostics = error.diagnostics
+      emitCompileStatus('error')
       return {
         ok: false,
         diagnostics,
@@ -424,6 +439,7 @@ async function compileOnly(source: string, nameHint?: string): Promise<CustomCom
         column: null,
       },
     ]
+    emitCompileStatus('error')
     return {
       ok: false,
       diagnostics,
@@ -437,7 +453,11 @@ async function saveCustomStrategy(payload: {
   name: string
   source: string
 }): Promise<CustomCompileResult> {
+  if (!runtimeModulePromise) {
+    emitCompileStatus('loading_runtime')
+  }
   const runtimeModule = await loadRuntimeModule()
+  emitCompileStatus('compiling')
 
   try {
     const compiledRaw = await runtimeModule.compileCustomStrategySource(payload.source, payload.name)
@@ -458,6 +478,7 @@ async function saveCustomStrategy(payload: {
     compiledCache.set(id, compiled)
     runtimeCache.delete(id)
 
+    emitCompileStatus('completed')
     return {
       ok: true,
       diagnostics,
@@ -467,6 +488,7 @@ async function saveCustomStrategy(payload: {
   } catch (error) {
     if (error instanceof runtimeModule.CompileError) {
       diagnostics = error.diagnostics
+      emitCompileStatus('error')
       return {
         ok: false,
         diagnostics,
@@ -481,6 +503,7 @@ async function saveCustomStrategy(payload: {
         column: null,
       },
     ]
+    emitCompileStatus('error')
     return {
       ok: false,
       diagnostics,

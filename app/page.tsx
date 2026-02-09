@@ -133,6 +133,7 @@ export default function Page() {
     workerState,
     library,
     compileResult,
+    compileStatus,
     workerError,
     controls,
   } = useSimulationWorker({
@@ -189,6 +190,7 @@ export default function Page() {
             diagnostics={effectiveState.diagnostics}
             library={library}
             compileResult={compileResult}
+            compileStatus={compileStatus}
             onSelectStrategy={(next) => {
               if (next.kind === 'custom') {
                 setCustomRuntimeEnabled(true)

@@ -23,6 +23,7 @@ const BPS_WAD = 100_000_000_000_000n
 const AFTER_INITIALIZE_SELECTOR = '837aef47'
 const AFTER_SWAP_SELECTOR = 'c2babb57'
 const SOLJSON_PUBLIC_PATH = '/solc/soljson.js'
+const SOLJSON_CACHE_NAME = 'ammvisualizer-soljson-v1'
 
 interface SolcCompilerLike {
   compile: (input: string) => string
@@ -240,14 +241,7 @@ async function createNodeCompiler(): Promise<SolcCompilerLike> {
 }
 
 async function createBrowserWorkerCompiler(): Promise<SolcCompilerLike> {
-  const response = await fetch(SOLJSON_PUBLIC_PATH, { cache: 'force-cache' })
-  if (!response.ok) {
-    throw new Error(
-      `Unable to load ${SOLJSON_PUBLIC_PATH}. Ensure build scripts copied soljson.js into public/solc.`,
-    )
-  }
-
-  const source = await response.text()
+  const source = await loadBrowserSoljsonSource()
   const moduleShim: { exports: unknown } = { exports: {} }
   const evaluator = new Function(
     'module',
@@ -286,6 +280,39 @@ async function createBrowserWorkerCompiler(): Promise<SolcCompilerLike> {
       }),
     version: () => coreBindings.version(),
   }
+}
+
+async function loadBrowserSoljsonSource(): Promise<string> {
+  const cacheApi = (globalThis as typeof globalThis & { caches?: CacheStorage }).caches
+  if (cacheApi) {
+    try {
+      const cache = await cacheApi.open(SOLJSON_CACHE_NAME)
+      const cached = await cache.match(SOLJSON_PUBLIC_PATH)
+      if (cached && cached.ok) {
+        return await cached.text()
+      }
+
+      const response = await fetch(SOLJSON_PUBLIC_PATH, { cache: 'no-store' })
+      if (!response.ok) {
+        throw new Error(
+          `Unable to load ${SOLJSON_PUBLIC_PATH}. Ensure build scripts copied soljson.js into public/solc.`,
+        )
+      }
+
+      await cache.put(SOLJSON_PUBLIC_PATH, response.clone())
+      return await response.text()
+    } catch {
+      // Fall through to normal fetch if CacheStorage is unavailable or fails.
+    }
+  }
+
+  const response = await fetch(SOLJSON_PUBLIC_PATH, { cache: 'force-cache' })
+  if (!response.ok) {
+    throw new Error(
+      `Unable to load ${SOLJSON_PUBLIC_PATH}. Ensure build scripts copied soljson.js into public/solc.`,
+    )
+  }
+  return await response.text()
 }
 
 function isNodeRuntime(): boolean {

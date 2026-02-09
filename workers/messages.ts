@@ -6,6 +6,12 @@ import type {
   WorkerUiState,
 } from '../lib/sim/types'
 
+export type CompileStatusPhase = 'idle' | 'loading_runtime' | 'compiling' | 'completed' | 'error'
+
+export interface CompileStatus {
+  phase: CompileStatusPhase
+}
+
 export type WorkerInboundMessage =
   | {
       type: 'INIT_SIM'
@@ -75,6 +81,12 @@ export type WorkerOutboundMessage =
       type: 'STATE'
       payload: {
         state: WorkerUiState
+      }
+    }
+  | {
+      type: 'COMPILE_STATUS'
+      payload: {
+        status: CompileStatus
       }
     }
   | {

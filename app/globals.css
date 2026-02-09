@@ -731,6 +731,38 @@ h3 {
   min-height: 36px;
 }
 
+.compile-action-btn {
+  min-width: 170px;
+}
+
+.compile-action-content {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: 100%;
+}
+
+.compile-status-icon {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+}
+
+.compile-status-icon.spin {
+  animation: compileSpin 0.85s linear infinite;
+}
+
+.compile-action-btn.phase-completed {
+  border-color: color-mix(in srgb, var(--good) 56%, var(--line));
+  color: color-mix(in srgb, var(--good) 72%, var(--ink));
+}
+
+.compile-action-btn.phase-error {
+  border-color: color-mix(in srgb, var(--bad) 50%, var(--line));
+  color: color-mix(in srgb, var(--bad) 72%, var(--ink));
+}
+
 .compile-status {
   display: grid;
   gap: 5px;
@@ -1196,6 +1228,12 @@ h3 {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes compileSpin {
+  to {
+    transform: rotate(360deg);
   }
 }
 

@@ -6,6 +6,7 @@ import Prism from 'prismjs'
 import 'prismjs/components/prism-solidity'
 import { BUILTIN_STRATEGIES } from '../lib/strategies/builtins'
 import type { CompilerDiagnostic, CustomCompileResult, StrategyLibraryItem, StrategyRef } from '../lib/sim/types'
+import type { CompileStatus } from '../workers/messages'
 
 interface CodePanelProps {
   availableStrategies: Array<{ kind: 'builtin' | 'custom'; id: string; name: string }>
@@ -16,6 +17,7 @@ interface CodePanelProps {
   diagnostics: CompilerDiagnostic[]
   library: StrategyLibraryItem[]
   compileResult: CustomCompileResult | null
+  compileStatus: CompileStatus
   showExplanationOverlay: boolean
   onSelectStrategy: (strategy: StrategyRef) => void
   onToggleExplanationOverlay: () => void
@@ -61,6 +63,7 @@ export function CodePanel({
   diagnostics,
   library,
   compileResult,
+  compileStatus,
   showExplanationOverlay,
   onSelectStrategy,
   onToggleExplanationOverlay,
@@ -92,6 +95,18 @@ export function CodePanel({
     const fallback = builtinOptions[0]
     return fallback ? `${fallback.kind}:${fallback.id}` : ''
   }, [availableStrategies, builtinOptions, selectedStrategy])
+
+  const compileButtonLabel =
+    compileStatus.phase === 'loading_runtime'
+      ? 'Loading Solc Runtime'
+      : compileStatus.phase === 'compiling'
+        ? 'Compiling Strategy'
+        : compileStatus.phase === 'completed'
+          ? 'Compile Complete'
+          : compileStatus.phase === 'error'
+            ? 'Compile Failed'
+            : 'Compile & Save'
+  const compileBusy = compileStatus.phase === 'loading_runtime' || compileStatus.phase === 'compiling'
 
   useEffect(() => {
     if (!containerRef.current || firstHighlightedLine === null) return
@@ -266,23 +281,17 @@ export function CodePanel({
           <div className="editor-actions">
             <button
               type="button"
+              className={`compile-action-btn phase-${compileStatus.phase}`}
               onClick={() => {
                 const cleanedName = draftName.trim() || 'Custom Strategy'
                 onCompileAndActivateCustom({ id: draftId, name: cleanedName, source: draftSource })
               }}
-              disabled={draftSource.trim().length === 0}
+              disabled={draftSource.trim().length === 0 || compileBusy}
             >
-              Compile &amp; Save
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setDraftId(undefined)
-                setDraftName('My Strategy')
-                setDraftSource(DEFAULT_SOURCE)
-              }}
-            >
-              New Draft
+              <span className="compile-action-content">
+                <CompilePhaseIcon phase={compileStatus.phase} />
+                <span>{compileButtonLabel}</span>
+              </span>
             </button>
           </div>
 
@@ -321,5 +330,47 @@ export function CodePanel({
         </div>
       </section>
     </section>
+  )
+}
+
+function CompilePhaseIcon({ phase }: { phase: CompileStatus['phase'] }) {
+  if (phase === 'completed') {
+    return (
+      <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false" className="compile-status-icon">
+        <path d="M3 8.2 6.2 11.4 13 4.6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      </svg>
+    )
+  }
+
+  if (phase === 'error') {
+    return (
+      <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false" className="compile-status-icon">
+        <path d="M4.2 4.2 11.8 11.8M11.8 4.2 4.2 11.8" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      </svg>
+    )
+  }
+
+  if (phase === 'loading_runtime') {
+    return (
+      <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false" className="compile-status-icon">
+        <path d="M3.5 11.5h9M8 2.5v6.2M5.5 6.9 8 9.4l2.5-2.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+      </svg>
+    )
+  }
+
+  if (phase === 'compiling') {
+    return (
+      <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false" className="compile-status-icon spin">
+        <circle cx="8" cy="8" r="5.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeOpacity="0.25" />
+        <path d="M8 2.5A5.5 5.5 0 0 1 13.5 8" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      </svg>
+    )
+  }
+
+  return (
+    <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false" className="compile-status-icon">
+      <path d="M4 3h8v10H4z" fill="none" stroke="currentColor" strokeWidth="1.4" />
+      <path d="M6 6h4M6 8h4M6 10h4" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+    </svg>
   )
 }

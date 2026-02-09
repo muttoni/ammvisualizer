@@ -14,21 +14,33 @@ interface UseSimulationWorkerArgs {
 
 export function useSimulationWorker({ seed, playbackSpeed, maxTapeRows, strategyRef }: UseSimulationWorkerArgs) {
   const workerRef = useRef<Worker | null>(null)
+  const compileStatusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [ready, setReady] = useState(false)
 
   const workerState = usePlaybackStore((state) => state.workerState)
   const library = usePlaybackStore((state) => state.library)
   const compileResult = usePlaybackStore((state) => state.compileResult)
+  const compileStatus = usePlaybackStore((state) => state.compileStatus)
   const workerError = usePlaybackStore((state) => state.workerError)
 
   const setWorkerState = usePlaybackStore((state) => state.setWorkerState)
   const setLibrary = usePlaybackStore((state) => state.setLibrary)
   const setCompileResult = usePlaybackStore((state) => state.setCompileResult)
+  const setCompileStatus = usePlaybackStore((state) => state.setCompileStatus)
   const setWorkerError = usePlaybackStore((state) => state.setWorkerError)
 
   const post = useCallback((message: WorkerInboundMessage) => {
     workerRef.current?.postMessage(message)
   }, [])
+
+  const beginCompile = useCallback(() => {
+    if (compileStatusTimerRef.current) {
+      clearTimeout(compileStatusTimerRef.current)
+      compileStatusTimerRef.current = null
+    }
+    setCompileResult(null)
+    setCompileStatus({ phase: 'loading_runtime' })
+  }, [setCompileResult, setCompileStatus])
 
   useEffect(() => {
     const worker = new Worker(new URL('../workers/simulation.worker.ts', import.meta.url), {
@@ -49,6 +61,23 @@ export function useSimulationWorker({ seed, playbackSpeed, maxTapeRows, strategy
         }
         case 'COMPILE_RESULT': {
           setCompileResult(message.payload.result)
+          break
+        }
+        case 'COMPILE_STATUS': {
+          const nextStatus = message.payload.status
+          setCompileStatus(nextStatus)
+
+          if (compileStatusTimerRef.current) {
+            clearTimeout(compileStatusTimerRef.current)
+            compileStatusTimerRef.current = null
+          }
+
+          if (nextStatus.phase === 'completed' || nextStatus.phase === 'error') {
+            compileStatusTimerRef.current = setTimeout(() => {
+              setCompileStatus({ phase: 'idle' })
+              compileStatusTimerRef.current = null
+            }, 2600)
+          }
           break
         }
         case 'ERROR': {
@@ -78,11 +107,15 @@ export function useSimulationWorker({ seed, playbackSpeed, maxTapeRows, strategy
     })
 
     return () => {
+      if (compileStatusTimerRef.current) {
+        clearTimeout(compileStatusTimerRef.current)
+        compileStatusTimerRef.current = null
+      }
       worker.terminate()
       workerRef.current = null
       setReady(false)
     }
-  }, [setCompileResult, setLibrary, setWorkerError, setWorkerState])
+  }, [setCompileResult, setCompileStatus, setLibrary, setWorkerError, setWorkerState])
 
   useEffect(() => {
     if (!ready) return
@@ -116,24 +149,30 @@ export function useSimulationWorker({ seed, playbackSpeed, maxTapeRows, strategy
       pause: () => post({ type: 'PAUSE' }),
       step: () => post({ type: 'STEP_ONE' }),
       reset: () => post({ type: 'RESET' }),
-      compileCustom: (source: string, nameHint?: string) =>
+      compileCustom: (source: string, nameHint?: string) => {
+        beginCompile()
         post({
           type: 'COMPILE_CUSTOM',
           payload: {
             source,
             nameHint,
           },
-        }),
-      compileAndActivateCustom: (payload: { id?: string; name: string; source: string }) =>
+        })
+      },
+      compileAndActivateCustom: (payload: { id?: string; name: string; source: string }) => {
+        beginCompile()
         post({
           type: 'COMPILE_AND_ACTIVATE_CUSTOM',
           payload,
-        }),
-      saveCustom: (payload: { id?: string; name: string; source: string }) =>
+        })
+      },
+      saveCustom: (payload: { id?: string; name: string; source: string }) => {
+        beginCompile()
         post({
           type: 'SAVE_CUSTOM',
           payload,
-        }),
+        })
+      },
       deleteCustom: (id: string) =>
         post({
           type: 'DELETE_CUSTOM',
@@ -141,7 +180,7 @@ export function useSimulationWorker({ seed, playbackSpeed, maxTapeRows, strategy
         }),
       loadLibrary: () => post({ type: 'LOAD_LIBRARY' }),
     }),
-    [post],
+    [beginCompile, post],
   )
 
   return {
@@ -149,6 +188,7 @@ export function useSimulationWorker({ seed, playbackSpeed, maxTapeRows, strategy
     workerState,
     library,
     compileResult,
+    compileStatus,
     workerError,
     controls,
   }
