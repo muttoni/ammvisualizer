@@ -2,6 +2,8 @@
 
 An interactive visual companion for the [AMM Fee Strategy Challenge](https://ammchallenge.com).
 
+<img width="1507" height="817" alt="image" src="https://github.com/user-attachments/assets/1502aac5-0cfd-44f0-91c9-00ca0c949b4e" />
+
 ## Why I Built This
 
 The [AMM Challenge](https://ammchallenge.com) is a great way to learn dynamic fee strategy design, but it can be hard to build intuition from raw simulation outputs alone.
