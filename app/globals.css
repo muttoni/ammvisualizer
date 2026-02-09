@@ -635,6 +635,10 @@ h3 {
   font-family: 'Space Mono', 'Courier New', monospace;
   font-size: 0.7rem;
   letter-spacing: 0.06em;
+  text-transform: none;
+}
+
+.editor-field > span {
   text-transform: uppercase;
 }
 
@@ -678,6 +682,8 @@ h3 {
   font-family: 'Space Mono', 'Courier New', monospace;
   font-size: 0.8rem;
   line-height: 1.45;
+  letter-spacing: normal;
+  text-transform: none;
   overflow: auto;
 }
 
@@ -688,6 +694,8 @@ h3 {
   font-family: inherit;
   font-size: inherit;
   line-height: inherit;
+  letter-spacing: normal;
+  text-transform: none;
   white-space: pre;
   word-wrap: normal;
 }
