@@ -5,6 +5,8 @@ import type { ThemeMode } from '../lib/sim/types'
 interface HeaderActionsProps {
   theme: ThemeMode
   onToggleTheme: () => void
+  subtitle?: string
+  subtitleLink?: string
 }
 
 function XIcon() {
@@ -23,17 +25,20 @@ function GitHubIcon() {
   )
 }
 
-export function HeaderActions({ theme, onToggleTheme }: HeaderActionsProps) {
+export function HeaderActions({ theme, onToggleTheme, subtitle, subtitleLink }: HeaderActionsProps) {
   const toggleLabel = theme === 'dark' ? 'Light Theme' : 'Dark Theme'
+  const title = subtitle ? `AMM Strategy Visualizer — ${subtitle}` : 'AMM Strategy Visualizer'
+  const linkHref = subtitleLink ?? 'https://ammchallenge.com'
+  const linkText = subtitle ? subtitle.toLowerCase() : 'ammchallenge.com'
 
   return (
     <header className="topbar reveal">
       <div className="brand-block">
-        <h1>AMM Strategy Visualizer</h1>
+        <h1>{title}</h1>
         <p>
           Step-by-step Automated Market Maker (AMM) strategy visualizer. Learn more at{' '}
-          <a href="https://ammchallenge.com" target="_blank" rel="noopener noreferrer">
-            ammchallenge.com
+          <a href={linkHref} target="_blank" rel="noopener noreferrer">
+            {linkText}
           </a>
         </p>
       </div>
