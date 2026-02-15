@@ -1,7 +1,4 @@
-export type PropFlowType = 'system' | 'arbitrage' | 'retail'
-export type PropPool = 'submission' | 'normalizer'
-export type PropOrderSide = 'buy' | 'sell'
-export type PropSwapSide = 0 | 1
+export type PropFlowType = 'arbitrage' | 'retail' | 'system'
 
 export type PropStrategyKind = 'builtin'
 
@@ -15,117 +12,85 @@ export interface PropSimulationConfig {
   strategyRef: PropStrategyRef
   playbackSpeed: number
   maxTapeRows: number
-  nSteps: number
-}
-
-export interface PropSampledRegime {
-  gbmSigma: number
-  retailArrivalRate: number
-  retailMeanSize: number
-  normFeeBps: number
-  normLiquidityMult: number
-}
-
-export interface PropStorageSummary {
-  lastChangedBytes: number
-  lastWriteStep: number | null
 }
 
 export interface PropAmmState {
-  pool: PropPool
   name: string
   reserveX: number
   reserveY: number
-  storage: Uint8Array<ArrayBufferLike>
+  isStrategy: boolean
 }
 
-export interface PropSwapInstruction {
-  side: PropSwapSide
-  inputAmountNano: bigint
-  reserveXNano: bigint
-  reserveYNano: bigint
-  storage: Uint8Array<ArrayBufferLike>
-}
-
-export interface PropAfterSwapInstruction {
-  side: PropSwapSide
-  inputAmountNano: bigint
-  outputAmountNano: bigint
-  reserveXNano: bigint
-  reserveYNano: bigint
-  step: number
-  storage: Uint8Array<ArrayBufferLike>
-}
-
-export interface PropStrategyRuntime {
-  ref: PropStrategyRef
-  name: string
-  code: string
-  modelUsed: string
-  computeSwap: (instruction: PropSwapInstruction) => bigint
-  afterSwap: (instruction: PropAfterSwapInstruction) => Uint8Array<ArrayBufferLike> | void
+export interface PropNormalizerConfig {
+  feeBps: number          // Sampled per simulation: 30-80
+  liquidityMult: number   // Sampled per simulation: 0.4-2.0
 }
 
 export interface PropTrade {
-  side: PropSwapSide
-  direction: 'buy_x' | 'sell_x'
+  side: 'buy' | 'sell'    // buy = AMM buys X (receives X, pays Y), sell = AMM sells X
   inputAmount: number
   outputAmount: number
-  inputAmountNano: string
-  outputAmountNano: string
+  timestamp: number
+  reserveX: number        // Post-trade
+  reserveY: number
   beforeX: number
   beforeY: number
-  reserveX: number
-  reserveY: number
   spotBefore: number
   spotAfter: number
-}
-
-export interface PropRetailOrder {
-  side: PropOrderSide
-  sizeY: number
+  impliedFeeBps: number   // Back-calculated from trade
 }
 
 export interface PropSnapshotAmm {
   x: number
   y: number
-  spot: number
+  k: number               // x * y for reference
+  impliedBidBps: number   // Last trade implied fee
+  impliedAskBps: number
+}
+
+export interface PropSnapshotNormalizer {
+  x: number
+  y: number
   k: number
+  feeBps: number
+  liquidityMult: number
 }
 
 export interface PropSnapshot {
   step: number
   fairPrice: number
-  submission: PropSnapshotAmm
-  normalizer: PropSnapshotAmm & {
-    feeBps: number
-    liquidityMult: number
-  }
+  strategy: PropSnapshotAmm
+  normalizer: PropSnapshotNormalizer
   edge: {
     total: number
     retail: number
     arb: number
   }
-  regime: PropSampledRegime
-  storage: PropStorageSummary
+  simulationParams: {
+    volatility: number
+    arrivalRate: number
+  }
+}
+
+export interface PropStorageChange {
+  offset: number
+  before: number
+  after: number
+}
+
+export interface PropStrategyExecution {
+  outputAmount: number
+  storageChanges: PropStorageChange[]
 }
 
 export interface PropTradeEvent {
   id: number
   step: number
   flow: PropFlowType
-  pool: PropPool
-  poolName: string
-  isSubmissionTrade: boolean
+  ammName: string
+  isStrategyTrade: boolean
   trade: PropTrade | null
-  order: PropRetailOrder | null
-  routerSplit:
-    | {
-        alpha: number
-        submissionInput: number
-        normalizerInput: number
-      }
-    | null
+  order: { side: 'buy' | 'sell'; sizeY: number } | null
   arbProfit: number
   fairPrice: number
   priceMove: { from: number; to: number }
@@ -134,8 +99,56 @@ export interface PropTradeEvent {
   codeExplanation: string
   stateBadge: string
   summary: string
-  storageChangedBytes: number
   snapshot: PropSnapshot
+  strategyExecution?: PropStrategyExecution
+}
+
+export interface PropComputeSwapInput {
+  side: 0 | 1             // 0 = buy X (Y input), 1 = sell X (X input)
+  inputAmount: bigint     // 1e9 scale
+  reserveX: bigint
+  reserveY: bigint
+  storage: Uint8Array     // 1024 bytes
+}
+
+export interface PropAfterSwapInput {
+  side: 0 | 1
+  inputAmount: bigint
+  outputAmount: bigint
+  reserveX: bigint        // Post-trade
+  reserveY: bigint
+  step: bigint
+  storage: Uint8Array     // 1024 bytes, mutable
+}
+
+export interface PropStrategyCallbackContext {
+  side: 0 | 1
+  inputAmount: number
+  outputAmount: number
+  reserveX: number
+  reserveY: number
+  step: number
+  flowType: PropFlowType
+  fairPrice: number
+  edgeDelta: number
+}
+
+export interface PropBuiltinStrategy {
+  id: string
+  name: string
+  code: string
+  feeBps: number          // For explanation purposes
+  computeSwap: (input: PropComputeSwapInput) => bigint
+  afterSwap?: (input: PropAfterSwapInput, storage: Uint8Array) => Uint8Array
+}
+
+export interface PropActiveStrategyRuntime {
+  ref: PropStrategyRef
+  name: string
+  code: string
+  feeBps: number
+  computeSwap: (reserveX: number, reserveY: number, side: 0 | 1, inputAmount: number, storage: Uint8Array) => number
+  afterSwap: (ctx: PropStrategyCallbackContext, storage: Uint8Array) => Uint8Array
 }
 
 export interface PropWorkerUiState {
@@ -145,7 +158,7 @@ export interface PropWorkerUiState {
     id: string
     name: string
     code: string
-    modelUsed: string
+    feeBps: number
   }
   isPlaying: boolean
   tradeCount: number
@@ -155,4 +168,14 @@ export interface PropWorkerUiState {
   reserveTrail: Array<{ x: number; y: number }>
   viewWindow: { xMin: number; xMax: number; yMin: number; yMax: number } | null
   availableStrategies: Array<{ kind: PropStrategyKind; id: string; name: string }>
+  normalizerConfig: PropNormalizerConfig
+}
+
+export interface PropDepthStats {
+  buyDepth1: number
+  buyDepth5: number
+  sellDepth1: number
+  sellDepth5: number
+  buyOneXCostY: number
+  sellOneXPayoutY: number
 }

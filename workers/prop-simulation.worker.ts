@@ -1,225 +1,240 @@
 import { PropSimulationEngine } from '../lib/prop-sim/engine'
-import { PROP_DEFAULT_STEPS, PROP_SPEED_PROFILE } from '../lib/prop-sim/constants'
-import { PropRng } from '../lib/prop-sim/rng'
-import type { PropSimulationConfig } from '../lib/prop-sim/types'
-import { getPropBuiltinStrategy, PROP_BUILTIN_STRATEGIES } from '../lib/prop-strategies/builtins'
-import type { PropWorkerInboundMessage, PropWorkerOutboundMessage } from './prop-messages'
+import { PROP_SPEED_PROFILE, PROP_STORAGE_SIZE } from '../lib/prop-sim/constants'
+import { fromScaledBigInt, toScaledBigInt } from '../lib/prop-sim/math'
+import type {
+  PropActiveStrategyRuntime,
+  PropSimulationConfig,
+  PropStrategyCallbackContext,
+  PropStrategyRef,
+  PropWorkerUiState,
+} from '../lib/prop-sim/types'
+import { getPropBuiltinStrategyById, PROP_BUILTIN_STRATEGIES } from '../lib/prop-strategies/builtins'
 
-const worker = self as unknown as {
-  postMessage: (message: PropWorkerOutboundMessage) => void
-  onmessage: ((event: MessageEvent<PropWorkerInboundMessage>) => void) | null
-  setInterval: typeof setInterval
-  clearInterval: typeof clearInterval
-}
+// ============================================================================
+// Worker State
+// ============================================================================
 
-const DEFAULT_CONFIG: PropSimulationConfig = {
-  seed: 1337,
-  strategyRef: {
-    kind: 'builtin',
-    id: 'starter',
-  },
-  playbackSpeed: 3,
-  maxTapeRows: 20,
-  nSteps: PROP_DEFAULT_STEPS,
-}
-
-let config: PropSimulationConfig = { ...DEFAULT_CONFIG }
 let engine: PropSimulationEngine | null = null
-let rng = new PropRng(config.seed)
-
 let isPlaying = false
-let playTimer: ReturnType<typeof setInterval> | null = null
-let stepping = false
-let messageQueue: Promise<void> = Promise.resolve()
+let playbackInterval: ReturnType<typeof setTimeout> | null = null
+let rngSeed = 1337
 
-worker.onmessage = (event) => {
-  const inbound = event.data
-  messageQueue = messageQueue
-    .then(async () => {
-      await handleMessage(inbound)
-    })
-    .catch((error) => {
-      emitError(error)
-    })
-}
+// ============================================================================
+// PRNG (mulberry32)
+// ============================================================================
 
-async function handleMessage(message: PropWorkerInboundMessage): Promise<void> {
-  switch (message.type) {
-    case 'INIT_PROP_SIM': {
-      config = {
-        ...config,
-        ...message.payload?.config,
-      }
-      config.nSteps = config.nSteps || PROP_DEFAULT_STEPS
-      rng.reset(config.seed)
-      await ensureEngineInitialized()
-      await resetEngine()
-      emitState()
-      break
-    }
-
-    case 'SET_PROP_CONFIG': {
-      const previous = config
-      const next: PropSimulationConfig = {
-        ...config,
-        ...message.payload.config,
-        nSteps: message.payload.config.nSteps ?? config.nSteps,
-      }
-      config = next
-
-      const seedChanged = next.seed !== previous.seed
-      const strategyChanged =
-        next.strategyRef.kind !== previous.strategyRef.kind ||
-        next.strategyRef.id !== previous.strategyRef.id
-      const nStepsChanged = next.nSteps !== previous.nSteps
-
-      await ensureEngineInitialized()
-      engine!.setConfig(next)
-
-      if (seedChanged) {
-        rng.reset(next.seed)
-      }
-
-      if (strategyChanged || seedChanged || nStepsChanged) {
-        await resetEngine()
-      }
-
-      if (isPlaying && next.playbackSpeed !== previous.playbackSpeed) {
-        restartPlaybackTimer()
-      }
-
-      emitState()
-      break
-    }
-
-    case 'STEP_PROP_ONE': {
-      stopPlayback()
-      await ensureEngineInitialized()
-      engine!.stepOne(rng)
-      emitState()
-      break
-    }
-
-    case 'PLAY_PROP': {
-      await ensureEngineInitialized()
-      startPlayback()
-      emitState()
-      break
-    }
-
-    case 'PAUSE_PROP': {
-      stopPlayback()
-      emitState()
-      break
-    }
-
-    case 'RESET_PROP': {
-      stopPlayback()
-      await ensureEngineInitialized()
-      await resetEngine()
-      emitState()
-      break
-    }
-
-    default: {
-      const unsupported: never = message
-      throw new Error(`Unsupported Prop worker message: ${JSON.stringify(unsupported)}`)
-    }
+function mulberry32(seed: number): () => number {
+  let s = seed >>> 0
+  return () => {
+    s = (s + 0x6d2b79f5) >>> 0
+    let t = s
+    t = Math.imul(t ^ (t >>> 15), t | 1)
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
   }
 }
 
-async function ensureEngineInitialized(): Promise<void> {
-  if (engine) {
-    return
+let rng = mulberry32(rngSeed)
+
+function seedRng(seed: number): void {
+  rngSeed = seed
+  rng = mulberry32(seed)
+}
+
+function randomBetween(min: number, max: number): number {
+  return min + rng() * (max - min)
+}
+
+function gaussianRandom(): number {
+  let u = 0
+  let v = 0
+  while (u === 0) u = rng()
+  while (v === 0) v = rng()
+  return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v)
+}
+
+// ============================================================================
+// Strategy Runtime Factory
+// ============================================================================
+
+function createActiveStrategyRuntime(ref: PropStrategyRef): PropActiveStrategyRuntime {
+  if (ref.kind !== 'builtin') {
+    throw new Error('Only builtin strategies are supported')
   }
 
-  const strategy = getPropBuiltinStrategy(config.strategyRef)
+  const builtin = getPropBuiltinStrategyById(ref.id)
+  if (!builtin) {
+    throw new Error(`Unknown builtin strategy: ${ref.id}`)
+  }
+
+  return {
+    ref,
+    name: builtin.name,
+    code: builtin.code,
+    feeBps: builtin.feeBps,
+    computeSwap: (reserveX: number, reserveY: number, side: 0 | 1, inputAmount: number, storage: Uint8Array): number => {
+      const output = builtin.computeSwap({
+        side,
+        inputAmount: toScaledBigInt(inputAmount),
+        reserveX: toScaledBigInt(reserveX),
+        reserveY: toScaledBigInt(reserveY),
+        storage,
+      })
+      return fromScaledBigInt(output)
+    },
+    afterSwap: (ctx: PropStrategyCallbackContext, storage: Uint8Array): Uint8Array => {
+      if (!builtin.afterSwap) {
+        return storage
+      }
+      return builtin.afterSwap({
+        side: ctx.side,
+        inputAmount: toScaledBigInt(ctx.inputAmount),
+        outputAmount: toScaledBigInt(ctx.outputAmount),
+        reserveX: toScaledBigInt(ctx.reserveX),
+        reserveY: toScaledBigInt(ctx.reserveY),
+        step: BigInt(ctx.step),
+        storage,
+      }, storage)
+    },
+  }
+}
+
+// ============================================================================
+// Message Handlers
+// ============================================================================
+
+type WorkerMessage =
+  | { type: 'init'; config: PropSimulationConfig }
+  | { type: 'setConfig'; config: PropSimulationConfig }
+  | { type: 'setStrategy'; strategyRef: PropStrategyRef }
+  | { type: 'play' }
+  | { type: 'pause' }
+  | { type: 'step' }
+  | { type: 'reset' }
+  | { type: 'getState' }
+
+function handleMessage(msg: WorkerMessage): void {
+  switch (msg.type) {
+    case 'init':
+      handleInit(msg.config)
+      break
+    case 'setConfig':
+      handleSetConfig(msg.config)
+      break
+    case 'setStrategy':
+      handleSetStrategy(msg.strategyRef)
+      break
+    case 'play':
+      handlePlay()
+      break
+    case 'pause':
+      handlePause()
+      break
+    case 'step':
+      handleStep()
+      break
+    case 'reset':
+      handleReset()
+      break
+    case 'getState':
+      postState()
+      break
+  }
+}
+
+function handleInit(config: PropSimulationConfig): void {
+  seedRng(config.seed)
+  const strategy = createActiveStrategyRuntime(config.strategyRef)
   engine = new PropSimulationEngine(config, strategy)
+  engine.reset(randomBetween)
+  postState()
 }
 
-async function resetEngine(): Promise<void> {
-  if (!engine) {
-    return
-  }
-
-  const strategy = getPropBuiltinStrategy(config.strategyRef)
-  engine.setStrategy(strategy)
+function handleSetConfig(config: PropSimulationConfig): void {
+  if (!engine) return
   engine.setConfig(config)
-  rng.reset(config.seed)
-  engine.reset(rng)
+  
+  // Update playback speed if playing
+  if (isPlaying && playbackInterval) {
+    clearInterval(playbackInterval)
+    const speed = PROP_SPEED_PROFILE[config.playbackSpeed] ?? PROP_SPEED_PROFILE[3]
+    playbackInterval = setInterval(tick, speed.ms)
+  }
+  
+  postState()
 }
 
-function startPlayback(): void {
-  if (!engine || isPlaying) {
-    return
-  }
+function handleSetStrategy(strategyRef: PropStrategyRef): void {
+  if (!engine) return
+  const strategy = createActiveStrategyRuntime(strategyRef)
+  engine.setStrategy(strategy)
+  engine.reset(randomBetween)
+  postState()
+}
 
+function handlePlay(): void {
+  if (!engine || isPlaying) return
   isPlaying = true
-  restartPlaybackTimer()
+  
+  const config = engine['state'].config
+  const speed = PROP_SPEED_PROFILE[config.playbackSpeed] ?? PROP_SPEED_PROFILE[3]
+  playbackInterval = setInterval(tick, speed.ms)
+  
+  postState()
 }
 
-function stopPlayback(): void {
+function handlePause(): void {
   isPlaying = false
-
-  if (playTimer) {
-    worker.clearInterval(playTimer)
-    playTimer = null
+  if (playbackInterval) {
+    clearInterval(playbackInterval)
+    playbackInterval = null
   }
+  postState()
 }
 
-function restartPlaybackTimer(): void {
-  if (!engine) {
-    return
+function handleStep(): void {
+  if (!engine) return
+  if (isPlaying) {
+    handlePause()
   }
-
-  if (playTimer) {
-    worker.clearInterval(playTimer)
-    playTimer = null
-  }
-
-  const profile = PROP_SPEED_PROFILE[config.playbackSpeed] ?? PROP_SPEED_PROFILE[3]
-
-  playTimer = worker.setInterval(() => {
-    if (!engine || !isPlaying || stepping) {
-      return
-    }
-
-    try {
-      stepping = true
-      const advanced = engine.stepOne(rng)
-      if (!advanced) {
-        stopPlayback()
-      }
-      emitState()
-    } catch (error) {
-      stopPlayback()
-      emitError(error)
-    } finally {
-      stepping = false
-    }
-  }, profile.ms)
+  engine.stepOne(randomBetween, gaussianRandom)
+  postState()
 }
 
-function emitState(): void {
-  if (!engine) {
-    return
-  }
-
-  worker.postMessage({
-    type: 'PROP_STATE',
-    payload: {
-      state: engine.toUiState(PROP_BUILTIN_STRATEGIES, isPlaying),
-    },
-  })
+function handleReset(): void {
+  if (!engine) return
+  handlePause()
+  seedRng(engine['state'].config.seed)
+  engine.reset(randomBetween)
+  postState()
 }
 
-function emitError(error: unknown): void {
-  const message = error instanceof Error ? error.message : String(error)
-
-  worker.postMessage({
-    type: 'PROP_ERROR',
-    payload: {
-      message,
-    },
-  })
+function tick(): void {
+  if (!engine || !isPlaying) return
+  engine.stepOne(randomBetween, gaussianRandom)
+  postState()
 }
+
+function postState(): void {
+  if (!engine) return
+  
+  const availableStrategies = PROP_BUILTIN_STRATEGIES.map((s) => ({
+    kind: 'builtin' as const,
+    id: s.id,
+    name: s.name,
+  }))
+  
+  const state = engine.toUiState(availableStrategies, isPlaying)
+  self.postMessage({ type: 'state', state })
+}
+
+// ============================================================================
+// Worker Entry
+// ============================================================================
+
+self.onmessage = (event: MessageEvent<WorkerMessage>) => {
+  handleMessage(event.data)
+}
+
+// Signal ready
+self.postMessage({ type: 'ready' })
