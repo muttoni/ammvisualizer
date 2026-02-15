@@ -225,7 +225,10 @@ export class PropSimulationEngine {
     this.state.lastEvent = event
     this.state.currentSnapshot = event.snapshot
 
-    this.state.reserveTrail = trackReservePoint(this.state.reserveTrail, event.snapshot)
+    this.state.reserveTrail = trackReservePoint(
+      this.state.reserveTrail,
+      event.snapshot as unknown as Parameters<typeof trackReservePoint>[1],
+    )
     this.refreshViewWindow()
 
     this.state.history.unshift(event)
