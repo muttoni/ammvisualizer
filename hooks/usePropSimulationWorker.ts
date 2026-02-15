@@ -1,120 +1,114 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
-import type { PropSimulationConfig, PropStrategyRef, PropWorkerUiState } from '../lib/prop-sim/types'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { PropSimulationConfig, PropStrategyRef } from '../lib/prop-sim/types'
+import { usePropPlaybackStore } from '../store/usePropPlaybackStore'
+import type { PropWorkerInboundMessage, PropWorkerOutboundMessage } from '../workers/prop-messages'
 
-interface UsePropSimulationWorkerOptions {
+interface UsePropSimulationWorkerArgs {
   seed: number
   playbackSpeed: number
   maxTapeRows: number
+  nSteps: number
   strategyRef: PropStrategyRef
 }
 
-interface UsePropSimulationWorkerResult {
-  ready: boolean
-  workerState: PropWorkerUiState | null
-  workerError: string | null
-  controls: {
-    play: () => void
-    pause: () => void
-    step: () => void
-    reset: () => void
-    setStrategy: (ref: PropStrategyRef) => void
-  }
-}
-
-export function usePropSimulationWorker(
-  options: UsePropSimulationWorkerOptions,
-): UsePropSimulationWorkerResult {
+export function usePropSimulationWorker({
+  seed,
+  playbackSpeed,
+  maxTapeRows,
+  nSteps,
+  strategyRef,
+}: UsePropSimulationWorkerArgs) {
   const workerRef = useRef<Worker | null>(null)
   const [ready, setReady] = useState(false)
-  const [workerState, setWorkerState] = useState<PropWorkerUiState | null>(null)
-  const [workerError, setWorkerError] = useState<string | null>(null)
 
-  // Initialize worker
+  const workerState = usePropPlaybackStore((state) => state.workerState)
+  const workerError = usePropPlaybackStore((state) => state.workerError)
+  const setWorkerState = usePropPlaybackStore((state) => state.setWorkerState)
+  const setWorkerError = usePropPlaybackStore((state) => state.setWorkerError)
+
+  const post = useCallback((message: PropWorkerInboundMessage) => {
+    workerRef.current?.postMessage(message)
+  }, [])
+
   useEffect(() => {
-    const worker = new Worker(
-      new URL('../workers/prop-simulation.worker.ts', import.meta.url),
-      { type: 'module' },
-    )
+    const worker = new Worker(new URL('../workers/prop-simulation.worker.ts', import.meta.url), {
+      type: 'module',
+    })
 
-    worker.onmessage = (event) => {
-      const msg = event.data
-      if (msg.type === 'ready') {
-        // Send init
-        const config: PropSimulationConfig = {
-          seed: options.seed,
-          strategyRef: options.strategyRef,
-          playbackSpeed: options.playbackSpeed,
-          maxTapeRows: options.maxTapeRows,
+    worker.onmessage = (event: MessageEvent<PropWorkerOutboundMessage>) => {
+      const message = event.data
+      switch (message.type) {
+        case 'PROP_STATE': {
+          setWorkerState(message.payload.state)
+          break
         }
-        worker.postMessage({ type: 'init', config })
-      } else if (msg.type === 'state') {
-        setWorkerState(msg.state)
-        if (!ready) {
-          setReady(true)
+        case 'PROP_ERROR': {
+          setWorkerError(message.payload.message)
+          break
         }
+        default:
+          break
       }
     }
 
-    worker.onerror = (event) => {
-      setWorkerError(event.message || 'Worker error')
+    workerRef.current = worker
+    setReady(true)
+
+    const initConfig: Partial<PropSimulationConfig> = {
+      seed,
+      playbackSpeed,
+      maxTapeRows,
+      nSteps,
+      strategyRef,
     }
 
-    workerRef.current = worker
+    worker.postMessage({
+      type: 'INIT_PROP_SIM',
+      payload: {
+        config: initConfig,
+      },
+    } satisfies PropWorkerInboundMessage)
 
     return () => {
       worker.terminate()
       workerRef.current = null
+      setReady(false)
     }
-    // Only run on mount
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [setWorkerError, setWorkerState])
 
-  // Update config when options change
   useEffect(() => {
-    if (!workerRef.current || !ready) return
+    if (!ready) return
 
-    const config: PropSimulationConfig = {
-      seed: options.seed,
-      strategyRef: options.strategyRef,
-      playbackSpeed: options.playbackSpeed,
-      maxTapeRows: options.maxTapeRows,
-    }
-    workerRef.current.postMessage({ type: 'setConfig', config })
-  }, [ready, options.seed, options.playbackSpeed, options.maxTapeRows, options.strategyRef])
+    post({
+      type: 'SET_PROP_CONFIG',
+      payload: {
+        config: {
+          seed,
+          playbackSpeed,
+          maxTapeRows,
+          nSteps,
+          strategyRef,
+        },
+      },
+    })
+  }, [maxTapeRows, nSteps, playbackSpeed, post, ready, seed, strategyRef])
 
-  // Controls
-  const play = useCallback(() => {
-    workerRef.current?.postMessage({ type: 'play' })
-  }, [])
-
-  const pause = useCallback(() => {
-    workerRef.current?.postMessage({ type: 'pause' })
-  }, [])
-
-  const step = useCallback(() => {
-    workerRef.current?.postMessage({ type: 'step' })
-  }, [])
-
-  const reset = useCallback(() => {
-    workerRef.current?.postMessage({ type: 'reset' })
-  }, [])
-
-  const setStrategy = useCallback((ref: PropStrategyRef) => {
-    workerRef.current?.postMessage({ type: 'setStrategy', strategyRef: ref })
-  }, [])
+  const controls = useMemo(
+    () => ({
+      play: () => post({ type: 'PLAY_PROP' }),
+      pause: () => post({ type: 'PAUSE_PROP' }),
+      step: () => post({ type: 'STEP_PROP_ONE' }),
+      reset: () => post({ type: 'RESET_PROP' }),
+    }),
+    [post],
+  )
 
   return {
     ready,
     workerState,
     workerError,
-    controls: {
-      play,
-      pause,
-      step,
-      reset,
-      setStrategy,
-    },
+    controls,
   }
 }

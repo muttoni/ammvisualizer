@@ -7,6 +7,7 @@ interface HeaderActionsProps {
   onToggleTheme: () => void
   subtitle?: string
   subtitleLink?: string
+  currentView?: 'amm' | 'prop'
 }
 
 function XIcon() {
@@ -25,7 +26,7 @@ function GitHubIcon() {
   )
 }
 
-export function HeaderActions({ theme, onToggleTheme, subtitle, subtitleLink }: HeaderActionsProps) {
+export function HeaderActions({ theme, onToggleTheme, subtitle, subtitleLink, currentView = 'amm' }: HeaderActionsProps) {
   const toggleLabel = theme === 'dark' ? 'Light Theme' : 'Dark Theme'
   const title = subtitle ? `AMM Strategy Visualizer — ${subtitle}` : 'AMM Strategy Visualizer'
   const linkHref = subtitleLink ?? 'https://ammchallenge.com'
@@ -41,6 +42,14 @@ export function HeaderActions({ theme, onToggleTheme, subtitle, subtitleLink }: 
             {linkText}
           </a>
         </p>
+        <div className="challenge-nav">
+          <a className={`challenge-link ${currentView === 'amm' ? 'active' : ''}`} href="/">
+            AMM Challenge
+          </a>
+          <a className={`challenge-link ${currentView === 'prop' ? 'active' : ''}`} href="/prop-amm">
+            Prop AMM
+          </a>
+        </div>
       </div>
 
       <div className="top-actions">

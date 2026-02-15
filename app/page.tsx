@@ -176,6 +176,7 @@ export default function Page() {
         <HeaderActions
           theme={theme}
           onToggleTheme={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+          currentView="amm"
         />
 
         {workerError ? <div className="worker-error">Worker error: {workerError}</div> : null}

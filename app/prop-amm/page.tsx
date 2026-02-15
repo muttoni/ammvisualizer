@@ -1,52 +1,67 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo } from 'react'
 import { HeaderActions } from '../../components/HeaderActions'
-import { FooterLinks } from '../../components/FooterLinks'
-import { PropCodePanel } from '../../components/PropCodePanel'
-import { PropMarketPanel } from '../../components/PropMarketPanel'
+import { PropCodePanel } from '../../components/prop/PropCodePanel'
+import { PropMarketPanel } from '../../components/prop/PropMarketPanel'
+import { PROP_DEFAULT_STEPS } from '../../lib/prop-sim/constants'
+import type { PropSimulationConfig, PropStrategyRef, PropWorkerUiState } from '../../lib/prop-sim/types'
+import { PROP_BUILTIN_STRATEGIES, getPropBuiltinStrategy } from '../../lib/prop-strategies/builtins'
 import { usePropSimulationWorker } from '../../hooks/usePropSimulationWorker'
+import { usePropUiStore } from '../../store/usePropUiStore'
 import { useUiStore } from '../../store/useUiStore'
-import type { PropStrategyRef, PropWorkerUiState } from '../../lib/prop-sim/types'
-import { PROP_BUILTIN_STRATEGIES, getPropBuiltinStrategyById } from '../../lib/prop-strategies/builtins'
 
-function buildFallbackUiState(strategyRef: PropStrategyRef, playbackSpeed: number, maxTapeRows: number): PropWorkerUiState {
-  const builtin = getPropBuiltinStrategyById(strategyRef.id) ?? PROP_BUILTIN_STRATEGIES[0]
+function buildFallbackUiState(strategyRef: PropStrategyRef, config: Omit<PropSimulationConfig, 'strategyRef'>): PropWorkerUiState {
+  const requested = PROP_BUILTIN_STRATEGIES.find((strategy) => strategy.id === strategyRef.id)
+  const selected = requested ?? PROP_BUILTIN_STRATEGIES[0]
+  const runtime = getPropBuiltinStrategy({ kind: 'builtin', id: selected.id })
 
   const snapshot: PropWorkerUiState['snapshot'] = {
     step: 0,
     fairPrice: 100,
-    strategy: {
+    submission: {
       x: 100,
       y: 10_000,
+      spot: 100,
       k: 1_000_000,
-      impliedBidBps: builtin.feeBps,
-      impliedAskBps: builtin.feeBps,
     },
     normalizer: {
       x: 100,
       y: 10_000,
+      spot: 100,
       k: 1_000_000,
       feeBps: 30,
-      liquidityMult: 1.0,
+      liquidityMult: 1,
     },
-    edge: { total: 0, retail: 0, arb: 0 },
-    simulationParams: { volatility: 0.003, arrivalRate: 0.8 },
+    edge: {
+      total: 0,
+      retail: 0,
+      arb: 0,
+    },
+    regime: {
+      gbmSigma: 0.001,
+      retailArrivalRate: 0.8,
+      retailMeanSize: 20,
+      normFeeBps: 30,
+      normLiquidityMult: 1,
+    },
+    storage: {
+      lastChangedBytes: 0,
+      lastWriteStep: null,
+    },
   }
 
   return {
     config: {
-      seed: 1337,
-      strategyRef: { kind: 'builtin', id: builtin.id },
-      playbackSpeed,
-      maxTapeRows,
+      ...config,
+      strategyRef: runtime.ref,
     },
     currentStrategy: {
-      kind: 'builtin',
-      id: builtin.id,
-      name: builtin.name,
-      code: builtin.code,
-      feeBps: builtin.feeBps,
+      kind: runtime.ref.kind,
+      id: runtime.ref.id,
+      name: runtime.name,
+      code: runtime.code,
+      modelUsed: runtime.modelUsed,
     },
     isPlaying: false,
     tradeCount: 0,
@@ -55,60 +70,52 @@ function buildFallbackUiState(strategyRef: PropStrategyRef, playbackSpeed: numbe
       id: 0,
       step: 0,
       flow: 'system',
-      ammName: builtin.name,
-      isStrategyTrade: false,
+      pool: 'submission',
+      poolName: 'Submission',
+      isSubmissionTrade: false,
       trade: null,
       order: null,
+      routerSplit: null,
       arbProfit: 0,
       fairPrice: 100,
       priceMove: { from: 100, to: 100 },
       edgeDelta: 0,
-      codeLines: [],
-      codeExplanation: 'Initializing simulation...',
-      stateBadge: `implied: ${builtin.feeBps}/${builtin.feeBps} bps`,
-      summary: 'Simulation worker is initializing.',
+      codeLines: [66, 67],
+      codeExplanation: 'Simulation worker is initializing in the background.',
+      stateBadge: 'storage Δ=0 bytes | last write: n/a',
+      summary: 'Simulation initialized.',
+      storageChangedBytes: 0,
       snapshot,
     },
     history: [],
     reserveTrail: [{ x: 100, y: 10_000 }],
     viewWindow: null,
-    availableStrategies: PROP_BUILTIN_STRATEGIES.map((s) => ({
-      kind: 'builtin' as const,
-      id: s.id,
-      name: s.name,
-    })),
-    normalizerConfig: { feeBps: 30, liquidityMult: 1.0 },
+    availableStrategies: PROP_BUILTIN_STRATEGIES,
   }
 }
 
 export default function PropAmmPage() {
   const theme = useUiStore((state) => state.theme)
-  const playbackSpeed = useUiStore((state) => state.playbackSpeed)
-  const maxTapeRows = useUiStore((state) => state.maxTapeRows)
-  const showCodeExplanation = useUiStore((state) => state.showCodeExplanation)
-  const chartAutoZoom = useUiStore((state) => state.chartAutoZoom)
-
   const setTheme = useUiStore((state) => state.setTheme)
-  const setPlaybackSpeed = useUiStore((state) => state.setPlaybackSpeed)
-  const setShowCodeExplanation = useUiStore((state) => state.setShowCodeExplanation)
-  const setChartAutoZoom = useUiStore((state) => state.setChartAutoZoom)
 
-  // Local strategy ref state for prop-amm
-  const [propStrategyRef, setPropStrategyRef] = useState<PropStrategyRef>({
-    kind: 'builtin',
-    id: 'starter-500bps',
-  })
+  const playbackSpeed = usePropUiStore((state) => state.playbackSpeed)
+  const maxTapeRows = usePropUiStore((state) => state.maxTapeRows)
+  const nSteps = usePropUiStore((state) => state.nSteps)
+  const strategyRef = usePropUiStore((state) => state.strategyRef)
+  const showCodeExplanation = usePropUiStore((state) => state.showCodeExplanation)
+  const chartAutoZoom = usePropUiStore((state) => state.chartAutoZoom)
 
-  const {
-    ready,
-    workerState,
-    workerError,
-    controls,
-  } = usePropSimulationWorker({
+  const setPlaybackSpeed = usePropUiStore((state) => state.setPlaybackSpeed)
+  const setStrategyRef = usePropUiStore((state) => state.setStrategyRef)
+  const setShowCodeExplanation = usePropUiStore((state) => state.setShowCodeExplanation)
+  const setChartAutoZoom = usePropUiStore((state) => state.setChartAutoZoom)
+
+  const { ready, workerState, workerError, controls } = usePropSimulationWorker({
     seed: 1337,
     playbackSpeed,
     maxTapeRows,
-    strategyRef: propStrategyRef,
+    nSteps,
+    strategyRef,
   })
 
   useEffect(() => {
@@ -116,21 +123,29 @@ export default function PropAmmPage() {
   }, [theme])
 
   const fallbackState = useMemo(
-    () => buildFallbackUiState(propStrategyRef, playbackSpeed, maxTapeRows),
-    [maxTapeRows, playbackSpeed, propStrategyRef],
+    () =>
+      buildFallbackUiState(strategyRef, {
+        seed: 1337,
+        playbackSpeed,
+        maxTapeRows,
+        nSteps: nSteps || PROP_DEFAULT_STEPS,
+      }),
+    [maxTapeRows, nSteps, playbackSpeed, strategyRef],
   )
+
   const effectiveState = workerState ?? fallbackState
   const simulationLoading = !ready || !workerState
 
   return (
     <>
-      <div className="backdrop" />
-      <div className="app-shell">
+      <div className="backdrop prop-backdrop" />
+      <div className="app-shell prop-app-shell">
         <HeaderActions
           theme={theme}
           onToggleTheme={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
           subtitle="Prop AMM Challenge"
           subtitleLink="https://ammchallenge.com/prop-amm"
+          currentView="prop"
         />
 
         {workerError ? <div className="worker-error">Worker error: {workerError}</div> : null}
@@ -138,15 +153,13 @@ export default function PropAmmPage() {
         <main className="layout">
           <PropCodePanel
             availableStrategies={effectiveState.availableStrategies}
-            selectedStrategy={propStrategyRef}
+            selectedStrategy={strategyRef}
             code={effectiveState.currentStrategy.code}
+            modelUsed={effectiveState.currentStrategy.modelUsed}
             highlightedLines={effectiveState.lastEvent.codeLines}
             codeExplanation={effectiveState.lastEvent.codeExplanation}
             showExplanationOverlay={showCodeExplanation}
-            onSelectStrategy={(next) => {
-              setPropStrategyRef(next)
-              controls.setStrategy(next)
-            }}
+            onSelectStrategy={setStrategyRef}
             onToggleExplanationOverlay={() => setShowCodeExplanation(!showCodeExplanation)}
           />
 
@@ -164,6 +177,7 @@ export default function PropAmmPage() {
                 controls.pause()
                 return
               }
+
               controls.play()
             }}
             onStep={() => {
@@ -176,8 +190,6 @@ export default function PropAmmPage() {
             }}
           />
         </main>
-
-        <FooterLinks />
       </div>
     </>
   )

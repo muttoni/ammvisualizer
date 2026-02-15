@@ -74,6 +74,14 @@ body {
   opacity: 0.42;
 }
 
+.prop-backdrop {
+  background-image:
+    linear-gradient(to right, rgba(54, 76, 108, 0.26) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(54, 76, 108, 0.2) 1px, transparent 1px);
+  background-size: 52px 52px;
+  opacity: 0.33;
+}
+
 h1,
 h2,
 h3,
@@ -119,6 +127,49 @@ h3 {
   overflow: hidden;
 }
 
+.prop-app-shell {
+  background:
+    radial-gradient(circle at 20% -24%, rgba(34, 56, 86, 0.95) 0%, rgba(18, 29, 45, 0.95) 46%, rgba(10, 19, 31, 0.98) 100%);
+}
+
+.prop-app-shell .topbar p,
+.prop-app-shell .clock,
+.prop-app-shell .metric-card span,
+.prop-app-shell .depth-legend,
+.prop-app-shell .trade-column-head span {
+  color: #8194b3;
+}
+
+.prop-app-shell .topbar p a,
+.prop-app-shell .challenge-link.active,
+.prop-app-shell .speed-inner strong {
+  color: #9bb1d8;
+}
+
+.prop-app-shell .layout,
+.prop-app-shell .code-panel,
+.prop-app-shell .market-panel,
+.prop-app-shell .panel-head,
+.prop-app-shell .market-controls,
+.prop-app-shell .chart-wrap,
+.prop-app-shell .metrics-panel,
+.prop-app-shell .trade-column {
+  border-color: rgba(72, 96, 130, 0.5);
+}
+
+.prop-app-shell .metric-card,
+.prop-app-shell .trade-row,
+.prop-app-shell .code-line {
+  background: rgba(13, 23, 38, 0.66);
+  border-color: rgba(60, 84, 116, 0.56);
+}
+
+.prop-app-shell .metric-card strong,
+.prop-app-shell .trade-text,
+.prop-app-shell .trade-edge {
+  color: #a3b7d8;
+}
+
 .topbar {
   display: flex;
   align-items: flex-end;
@@ -146,6 +197,36 @@ h3 {
 .topbar p a:hover {
   color: var(--accent-soft);
   border-bottom-color: var(--accent-soft);
+}
+
+.challenge-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.challenge-link {
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: linear-gradient(180deg, var(--panel-strong) 0%, var(--panel-soft) 100%);
+  color: var(--ink-soft);
+  font-family: 'Space Mono', 'Courier New', monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-decoration: none;
+  padding: 5px 8px;
+}
+
+.challenge-link:hover {
+  color: var(--accent);
+  border-color: var(--accent-soft);
+}
+
+.challenge-link.active {
+  color: var(--accent);
+  border-color: var(--accent-soft);
 }
 
 .top-actions {
@@ -355,6 +436,17 @@ h3 {
   min-height: 50px;
   padding: 11px 13px;
   font-size: 0.96rem;
+}
+
+.prop-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  color: var(--ink-soft);
+  font-size: 0.72rem;
+  font-family: 'Space Mono', 'Courier New', monospace;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
 }
 
 .strategy-picker select,
@@ -948,6 +1040,28 @@ h3 {
   background: linear-gradient(180deg, var(--chart-bg-top) 0%, var(--chart-bg-bottom) 100%);
 }
 
+.prop-chart-wrap {
+  border-bottom: 1px solid rgba(69, 92, 126, 0.46);
+  padding: 7px 8px;
+  background: transparent;
+}
+
+.prop-chart-host {
+  height: 100%;
+}
+
+#propCurveChart {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  border-radius: 14px;
+  border: 1px solid rgba(69, 92, 126, 0.55);
+  box-shadow:
+    inset 0 0 0 1px rgba(34, 51, 74, 0.4),
+    0 10px 20px rgba(3, 8, 15, 0.35);
+}
+
 .market-bottom {
   flex: 0 0 auto;
   display: grid;
@@ -1434,6 +1548,10 @@ h3 {
   }
 
   #curveChart {
+    min-height: 220px;
+  }
+
+  #propCurveChart {
     min-height: 220px;
   }
 
