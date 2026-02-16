@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { HeaderActions } from '../../components/HeaderActions'
-import { FooterLinks } from '../../components/FooterLinks'
 import { PropCodePanel } from '../../components/PropCodePanel'
 import { PropMarketPanel } from '../../components/PropMarketPanel'
 import { usePropSimulationWorker } from '../../hooks/usePropSimulationWorker'
@@ -177,7 +176,6 @@ export default function PropAmmPage() {
           />
         </main>
 
-        <FooterLinks />
       </div>
     </>
   )

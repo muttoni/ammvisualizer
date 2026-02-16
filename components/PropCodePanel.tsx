@@ -1,6 +1,8 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
+import Prism from 'prismjs'
+import 'prismjs/components/prism-rust'
 import type { PropStrategyRef } from '../lib/prop-sim/types'
 
 interface PropCodePanelProps {
@@ -24,73 +26,89 @@ export function PropCodePanel({
   onSelectStrategy,
   onToggleExplanationOverlay,
 }: PropCodePanelProps) {
-  const lines = useMemo(() => code.split('\n'), [code])
-  const highlightSet = useMemo(() => new Set(highlightedLines), [highlightedLines])
+  const containerRef = useRef<HTMLDivElement | null>(null)
+  const lineSet = useMemo(() => new Set(highlightedLines), [highlightedLines])
+  const firstHighlightedLine = highlightedLines[0] ?? null
+  const lines = useMemo(() => code.replace(/\t/g, '    ').split('\n'), [code])
+  const highlightedRustLines = useMemo(
+    () => lines.map((line) => Prism.highlight(line || ' ', Prism.languages.rust, 'rust')),
+    [lines],
+  )
+
+  useEffect(() => {
+    if (!containerRef.current || firstHighlightedLine === null) return
+
+    const target = containerRef.current.querySelector<HTMLDivElement>(`.code-line[data-line='${firstHighlightedLine}']`)
+    if (target) {
+      target.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    }
+  }, [firstHighlightedLine])
 
   return (
     <section className="code-panel reveal delay-1">
-      <div className="panel-head code-head">
-        <h2>Strategy Code (Rust)</h2>
-        <div className="code-head-actions">
-          <select
-            id="strategySelect"
-            className="strategy-select"
-            value={`${selectedStrategy.kind}:${selectedStrategy.id}`}
-            onChange={(e) => {
-              const [kind, id] = e.target.value.split(':')
-              if (kind === 'builtin') {
-                onSelectStrategy({ kind: 'builtin', id })
-              }
-            }}
-          >
-            {availableStrategies.map((s) => (
-              <option key={`${s.kind}:${s.id}`} value={`${s.kind}:${s.id}`}>
-                {s.name}
-              </option>
-            ))}
-          </select>
-          <button
-            type="button"
-            aria-pressed={showExplanationOverlay}
-            className={`small-control explain-toggle ${showExplanationOverlay ? 'active' : ''}`}
-            onClick={onToggleExplanationOverlay}
-          >
-            {showExplanationOverlay ? 'Hide Explanation' : 'Show Explanation'}
-          </button>
-        </div>
-      </div>
+      <div className="panel-head">
+        <div className="panel-head-stack">
+          <div className="panel-head-row">
+            <h2>Strategy</h2>
+          </div>
 
-      <div className="code-wrap terminal-surface">
-        <pre className="code-block">
-          <code className="language-rust">
-            {lines.map((line, i) => {
-              const lineNum = i + 1
-              const isHighlighted = highlightSet.has(lineNum)
-              return (
-                <div
-                  key={lineNum}
-                  className={`code-line ${isHighlighted ? 'highlight' : ''}`}
-                  data-line={lineNum}
-                >
-                  <span className="line-number">{lineNum}</span>
-                  <span className="line-content">{line || ' '}</span>
-                </div>
-              )
-            })}
-          </code>
-        </pre>
-      </div>
-
-      {showExplanationOverlay ? (
-        <div className="explanation-panel terminal-surface">
-          <h3>What the code is doing</h3>
-          <p>{codeExplanation}</p>
-          <div className="explanation-note">
-            <strong>Note:</strong> Prop AMM strategies define a custom <code>compute_swap</code> function that returns{' '}
-            <code>output_amount</code> directly, rather than just adjusting fees on a constant-product curve.
+          <div className="strategy-picker strategy-picker-wide">
+            <select
+              id="availableStrategySelect"
+              value={`${selectedStrategy.kind}:${selectedStrategy.id}`}
+              onChange={(event) => {
+                const [kind, id] = event.target.value.split(':')
+                if (kind === 'builtin') {
+                  onSelectStrategy({ kind: 'builtin', id })
+                }
+              }}
+            >
+              {availableStrategies.map((strategy) => (
+                <option key={`${strategy.kind}-${strategy.id}`} value={`${strategy.kind}:${strategy.id}`}>
+                  {strategy.name}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
-      ) : null}
+      </div>
+
+      <div ref={containerRef} id="codeView" className="code-view" aria-label="Strategy code">
+        {lines.map((line, index) => {
+          const lineNumber = index + 1
+          const active = lineSet.has(lineNumber)
+
+          return (
+            <div key={lineNumber} className={`code-line${active ? ' active' : ''}`} data-line={lineNumber}>
+              <span className="line-no">{String(lineNumber).padStart(2, '0')}</span>
+              <span className="line-text" dangerouslySetInnerHTML={{ __html: highlightedRustLines[index] }} />
+            </div>
+          )
+        })}
+      </div>
+
+      <section className={`code-explain-section ${showExplanationOverlay ? 'expanded' : 'collapsed'}`} role="note" aria-live="polite">
+        <button
+          type="button"
+          className="code-explain-toggle"
+          onClick={onToggleExplanationOverlay}
+          aria-expanded={showExplanationOverlay}
+          aria-controls="codeExplanationBody"
+        >
+          <span>What the code is doing</span>
+          <svg
+            className={`code-explain-icon ${showExplanationOverlay ? 'expanded' : ''}`}
+            viewBox="0 0 20 20"
+            aria-hidden="true"
+            focusable="false"
+          >
+            <path d="M5.5 7.5 10 12l4.5-4.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+          </svg>
+        </button>
+        <p id="codeExplanationBody" hidden={!showExplanationOverlay}>
+          {codeExplanation || 'Step or play to see the current strategy decision.'}
+        </p>
+      </section>
     </section>
   )
 }
