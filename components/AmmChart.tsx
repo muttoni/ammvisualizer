@@ -24,7 +24,11 @@ interface AmmChartProps {
 }
 
 export function AmmChart({ snapshot, reserveTrail, lastEvent, theme, viewWindow, autoZoom, chartSize, variant = 'classic' }: AmmChartProps) {
-  const palette = variant === 'prop' ? PROP_CHART_THEME[theme] : CHART_THEME[theme]
+  const palette = variant === 'prop'
+    ? theme === 'dark'
+      ? PROP_CHART_THEME.dark
+      : CHART_THEME.light
+    : CHART_THEME[theme]
   const uid = useId().replace(/:/g, '')
   const clipId = `plotClip-${uid}`
   const markerId = `arrowHead-${uid}`
