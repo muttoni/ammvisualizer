@@ -125,7 +125,7 @@ export default function PropAmmPage() {
   return (
     <>
       <div className="backdrop" />
-      <div className="app-shell">
+      <div className="app-shell prop-amm-page">
         <HeaderActions
           theme={theme}
           onToggleTheme={() => setTheme(theme === 'dark' ? 'light' : 'dark')}

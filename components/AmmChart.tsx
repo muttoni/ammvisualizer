@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useId, useMemo, useState } from 'react'
-import { CHART_THEME } from '../lib/sim/constants'
+import { CHART_THEME, PROP_CHART_THEME } from '../lib/sim/constants'
 import {
   buildArrowPath,
   buildCurvePath,
@@ -20,10 +20,11 @@ interface AmmChartProps {
   viewWindow: { xMin: number; xMax: number; yMin: number; yMax: number } | null
   autoZoom: boolean
   chartSize?: { width: number; height: number }
+  variant?: 'classic' | 'prop'
 }
 
-export function AmmChart({ snapshot, reserveTrail, lastEvent, theme, viewWindow, autoZoom, chartSize }: AmmChartProps) {
-  const palette = CHART_THEME[theme]
+export function AmmChart({ snapshot, reserveTrail, lastEvent, theme, viewWindow, autoZoom, chartSize, variant = 'classic' }: AmmChartProps) {
+  const palette = variant === 'prop' ? PROP_CHART_THEME[theme] : CHART_THEME[theme]
   const uid = useId().replace(/:/g, '')
   const clipId = `plotClip-${uid}`
   const markerId = `arrowHead-${uid}`
@@ -113,6 +114,25 @@ export function AmmChart({ snapshot, reserveTrail, lastEvent, theme, viewWindow,
       innerH,
     }
   }, [autoZoom, baseView.liveWindow, baseView.targetX, baseView.targetY, frozenWindow, geometry.height, geometry.margin.bottom, geometry.margin.left, geometry.margin.right, geometry.margin.top, geometry.width, lastEvent, reserveTrail, snapshot])
+
+  const titleLabel = variant === 'prop' ? 'compute_swap()' : 'x · y = k'
+  const subtitleLabel = variant === 'prop' ? 'output curve' : 'Δy / Δx'
+  const xAxisLabel = variant === 'prop' ? 'Input' : 'Reserve X'
+  const yAxisLabel = variant === 'prop' ? 'Output' : 'Reserve Y'
+  const strategyLabel = variant === 'prop' ? 'strategy curve' : 'strategy'
+  const normalizerLabel = variant === 'prop' ? 'normalizer ref' : 'normalizer'
+  const trailLabel =
+    variant === 'prop'
+      ? autoZoom
+        ? 'tracked reserves (auto)'
+        : 'tracked reserves (fixed)'
+      : autoZoom
+        ? 'recent trail (auto-zoom)'
+        : 'recent trail (fixed view)'
+  const titleFont = variant === 'prop' ? 'Space Mono' : 'Cormorant Garamond'
+  const titleStyle = variant === 'prop' ? 'normal' : 'italic'
+  const axisFont = variant === 'prop' ? 'IBM Plex Sans' : 'Cormorant Garamond'
+  const labelFont = variant === 'prop' ? 'Space Mono' : 'Space Mono'
 
   return (
     <svg
@@ -217,35 +237,35 @@ export function AmmChart({ snapshot, reserveTrail, lastEvent, theme, viewWindow,
         <circle cx={chart.targetPoint.x} cy={chart.targetPoint.y} r="2.8" fill={palette.targetDot} fillOpacity="0.62" />
       </g>
 
-      <text x={geometry.width - 188} y="42" fill={palette.labelMain} fontSize="28" fontFamily="Cormorant Garamond" fontStyle="italic">
-        x · y = k
+      <text x={geometry.width - 218} y="42" fill={palette.labelMain} fontSize={variant === 'prop' ? '20' : '28'} fontFamily={titleFont} fontStyle={titleStyle} letterSpacing={variant === 'prop' ? '0.03em' : 'normal'}>
+        {titleLabel}
       </text>
-      <text x={geometry.width - 166} y="61" fill={palette.labelSoft} fontSize="15" fontFamily="Cormorant Garamond" fontStyle="italic">
-        Δy / Δx
+      <text x={geometry.width - 188} y="61" fill={palette.labelSoft} fontSize={variant === 'prop' ? '12' : '15'} fontFamily={titleFont} fontStyle={titleStyle} letterSpacing={variant === 'prop' ? '0.06em' : 'normal'}>
+        {subtitleLabel}
       </text>
 
-      <text x={geometry.width / 2 - 38} y={geometry.height - 12} fill={palette.axisLabel} fontSize="13" fontFamily="Cormorant Garamond">
-        Reserve X
+      <text x={geometry.width / 2 - 38} y={geometry.height - 12} fill={palette.axisLabel} fontSize="13" fontFamily={axisFont}>
+        {xAxisLabel}
       </text>
       <text
         x="27"
         y={geometry.height / 2 + 24}
         fill={palette.axisLabel}
         fontSize="13"
-        fontFamily="Cormorant Garamond"
+        fontFamily={axisFont}
         transform={`rotate(-90 27 ${geometry.height / 2 + 24})`}
       >
-        Reserve Y
+        {yAxisLabel}
       </text>
 
-      <text x={geometry.margin.left + 10} y={geometry.margin.top + 14} fill={palette.legendStrategy} fontSize="10" fontFamily="Space Mono">
-        strategy
+      <text x={geometry.margin.left + 10} y={geometry.margin.top + 14} fill={palette.legendStrategy} fontSize="10" fontFamily={labelFont}>
+        {strategyLabel}
       </text>
-      <text x={geometry.margin.left + 10} y={geometry.margin.top + 27} fill={palette.legendNormalizer} fontSize="10" fontFamily="Space Mono">
-        normalizer
+      <text x={geometry.margin.left + 10} y={geometry.margin.top + 27} fill={palette.legendNormalizer} fontSize="10" fontFamily={labelFont}>
+        {normalizerLabel}
       </text>
-      <text x={geometry.margin.left + 10} y={geometry.margin.top + 40} fill={palette.legendTrail} fontSize="9" fontFamily="Space Mono">
-        {autoZoom ? 'recent trail (auto-zoom)' : 'recent trail (fixed view)'}
+      <text x={geometry.margin.left + 10} y={geometry.margin.top + 40} fill={palette.legendTrail} fontSize="9" fontFamily={labelFont}>
+        {trailLabel}
       </text>
     </svg>
   )

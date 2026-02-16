@@ -215,6 +215,7 @@ export function PropMarketPanel({
                 viewWindow={state.viewWindow}
                 autoZoom={autoZoom}
                 chartSize={chartSize}
+                variant="prop"
               />
             </div>
           </div>

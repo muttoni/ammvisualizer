@@ -1,5 +1,8 @@
 'use client'
 
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+
 import type { ThemeMode } from '../lib/sim/types'
 
 interface HeaderActionsProps {
@@ -26,6 +29,8 @@ function GitHubIcon() {
 }
 
 export function HeaderActions({ theme, onToggleTheme, subtitle, subtitleLink }: HeaderActionsProps) {
+  const pathname = usePathname()
+  const isPropPage = pathname?.startsWith('/prop-amm') ?? false
   const toggleLabel = theme === 'dark' ? 'Light Theme' : 'Dark Theme'
   const title = subtitle ? `AMM Strategy Visualizer — ${subtitle}` : 'AMM Strategy Visualizer'
   const linkHref = subtitleLink ?? 'https://ammchallenge.com'
@@ -44,6 +49,14 @@ export function HeaderActions({ theme, onToggleTheme, subtitle, subtitleLink }: 
       </div>
 
       <div className="top-actions">
+        <nav className="challenge-nav" aria-label="Challenge section links">
+          <Link className={`challenge-link${isPropPage ? '' : ' active'}`} href="/">
+            AMM
+          </Link>
+          <Link className={`challenge-link${isPropPage ? ' active' : ''}`} href="/prop-amm">
+            Prop AMM
+          </Link>
+        </nav>
         <a className="terminal-link" href="https://x.com/devrelius" target="_blank" rel="noopener noreferrer">
           <XIcon />
           <span>devrelius</span>
